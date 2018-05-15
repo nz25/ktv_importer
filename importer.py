@@ -137,7 +137,3 @@ engine.Execute(wgt)
 del engine
 
 mdd.Close()
-
-from sqlalchemy import create_engine
-engine = create_engine('mssql+pyodbc://AVANUSQL702/dw_04_dashboard?driver=SQL+Server+Native+Client+11.0?trusted_connection=yes')
-print(engine)
