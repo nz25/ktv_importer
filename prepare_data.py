@@ -1,4 +1,5 @@
 ﻿from settings import *
+import enums as e
 from shutil import copyfile
 from win32com import client
 from math import isclose
@@ -33,8 +34,8 @@ def add_weight_variable():
     mdd.Open(dest + '.mdd')
     if not mdd.Fields.Exist('weight'):
         wgt_var = mdd.CreateVariable('weight', 'Weight')
-        wgt_var.DataType = 6 # DataTypeConstants.mtDouble
-        wgt_var.UsageType = 8192 # VariableUsageConstants.vtWeight
+        wgt_var.DataType = e.DataTypeConstants.mtDouble
+        wgt_var.UsageType = e.VariableUsageConstants.vtWeight
         mdd.Fields.Add(wgt_var)
     mdd.Save()
     mdd.Close()
@@ -102,16 +103,16 @@ def weight_data():
 
     engine = client.Dispatch('mrWeight.WeightEngine')
     engine.Initialize(mdd)
-    wgt = engine.CreateWeight('weight', ','.join(adjusted_weight_targets.keys()), 3) #3 = wtMethod.wtRims
+    wgt = engine.CreateWeight('weight', ','.join(adjusted_weight_targets.keys()), e.wtMethod.wtRims)
 
     for k in adjusted_weight_targets.keys():
         rim = wgt.Rims[k]
         for i in range(rim.RimElements.Count):
             rim_element = rim.RimElements.Item(i)
             rim_element_category_name = category_values[rim_element.Category[0]]
-            rim_element.Target = adjusted_weight_targets[k].get(rim_element_category_name, 0)
+            rim_element.Target = adjusted_weight_targets[k].get(rim_element_category_name, 0.0)
 
-    wgt.TotalType = 2 #2 = wtTotalType.wtUnweightedInput
+    wgt.TotalType = e.wtTotalType.wtUnweightedInput
     wgt.MaxWeight = 15
 
     engine.Prepare(wgt)
@@ -131,7 +132,7 @@ def main():
         get_frequences(k)
         adjust_weight_targets(k)
     weight_data()
-    print('Date preparation complete')
+    print('Data preparation complete')
 
 if __name__ == '__main__':
     main()
