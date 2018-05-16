@@ -14,7 +14,6 @@ ddf.ConnectionString = '''
     MR Init Category Names=1;'''
 
 category_values = {}
-category_names = {}
 adjusted_weight_targets = {}
 
 def back_up():
@@ -31,7 +30,6 @@ def back_up():
 def add_weight_variable():
     print('Adding weight variable...')
 
-    # adding weight variable
     mdd.Open(dest + '.mdd')
     if not mdd.Fields.Exist('weight'):
         wgt_var = mdd.CreateVariable('weight', 'Weight')
@@ -46,43 +44,32 @@ def init_category_maps():
     mdd.Open(dest + '.mdd')
     for i in range(mdd.CategoryMap.Count):
         category_values[mdd.CategoryMap.ItemValue(i)] = mdd.CategoryMap.ItemName(i)
-    global category_names
-    category_names = {v: k for k, v in category_values.items()}
     mdd.Close()
 
-# 2. Cleaning data
 def clean_data():
     print('Cleaning data...')
 
     ddf.Open()
     ddf.Execute("exec xp_syncdb")
 
-    #Removing incompletes
+    # basco checks
     _, rows_affected = ddf.Execute('delete from vdata where not comp.ContainsAny({comp, comp_sc})')
     print('    {0} incompletes removed'.format(rows_affected))
-
-    #Removing tests
     _, rows_affected = ddf.Execute('delete from vdata where DataCollection.Status.ContainsAny({Test})')
     print('    {0} test interviews removed'.format(rows_affected))
-
-    #Removing basco knock-out (f5g)
     _, rows_affected = ddf.Execute('delete from vdata where f5g.AnswerCount() = 0')
     print('    {0} interviews with f5g = 0 removed'.format(rows_affected))
-
-    #Removing basco knock-out (interview duration)
     _, rows_affected = ddf.Execute('delete from vdata where cdouble(intend-intstart)*60*24 <= 5')
     print('    {0} interviews with interview duration <= 5 minutes removed'.format(rows_affected))
-
-    # testing weight normalization
-    # rs, rows_affected = ddf.Execute('update vdata set qage = {c_20} where qage = {c_15}')
+ 
+    # # testing weight normalization by overwriting c_15 with c_20
+    # _, rows_affected = ddf.Execute('update vdata set qage = {c_20} where qage = {c_15}')
     # print('Testing weight normalization. {0} interview adjusted (c_15 > c_20)'.format(rows_affected))
 
     ddf.Close()
 
-
-#Checking distribution of weight variables
 def get_frequences(var):
-    print('    Getting frequencies')
+    print('    Looking at data...')
     ddf.Open()
     rs, _ = ddf.Execute('select {0}, count(*) as c from vdata group by {0}'.format(var))
     temp = {}
@@ -103,11 +90,11 @@ def adjust_weight_targets(var):
     # normalizing intial weight if sum of all targets is less than 100
     normalization_factor = 100 / sum(adjusted_weight_targets[var].values())
     if isclose(normalization_factor, 1.0, abs_tol=0.0):
-        print('    No weight normalization necessary')
+        print('    OK')
     else:
-        print('    Normalizing {0} by {1}'.format(var, normalization_factor))
+        print('    Categories missing. Increasing {0} factors by {1:.1%}'.format(var, normalization_factor - 1))
         adjusted_weight_targets[var] = {k: v * normalization_factor for k, v in adjusted_weight_targets[var].items()}
-
+        
 def weight_data():
     print('Weighting data...')
 
@@ -120,8 +107,9 @@ def weight_data():
     for k in adjusted_weight_targets.keys():
         rim = wgt.Rims[k]
         for i in range(rim.RimElements.Count):
-            elem = rim.RimElements.Item(i)
-            elem.Target = adjusted_weight_targets[k][category_values[elem.Category[0]]]
+            rim_element = rim.RimElements.Item(i)
+            rim_element_category_name = category_values[rim_element.Category[0]]
+            rim_element.Target = adjusted_weight_targets[k].get(rim_element_category_name, 0)
 
     wgt.TotalType = 2 #2 = wtTotalType.wtUnweightedInput
     wgt.MaxWeight = 15
@@ -133,13 +121,17 @@ def weight_data():
 
     mdd.Close()
 
-# Workflow
-back_up()
-add_weight_variable()
-init_category_maps()
-clean_data()
-for k in initial_weight_targets.keys():
-    print('Adjusting weight targets for {0}'.format(k))
-    get_frequences(k)
-    adjust_weight_targets(k)
-weight_data()
+def main():
+    back_up()
+    add_weight_variable()
+    init_category_maps()
+    clean_data()
+    for k in initial_weight_targets.keys():
+        print('Checking weight targets for {0}'.format(k))
+        get_frequences(k)
+        adjust_weight_targets(k)
+    weight_data()
+    print('Date preparation complete')
+
+if __name__ == '__main__':
+    main()
