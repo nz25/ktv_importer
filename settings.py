@@ -1,4 +1,4 @@
-# files
+# files paths
 src = r'D:\ktv\KTVONLINE_18'
 dest = r'D:\ktv\KTVONLINE_18_IMPORT'
 
@@ -12,3 +12,13 @@ initial_weight_targets = {
            'c_9': 9.65, 'c_10': 21.74, 'c_11': 4.93, 'c_12': 1.21,
            'c_13': 4.97, 'c_14': 2.73, 'c_15': 3.48, 'c_16': 2.64}
 }
+
+# connection strings
+mssql_connection = 'mssql+pyodbc://AVANUSQL702/dw_04_live?driver=SQL+Server+Native+Client+11.0?trusted_connection=yes'
+ddf_connection = '''
+    Provider=mrOleDB.Provider.2;
+    Data Source=mrDataFileDsc;
+    Location=''' + dest + '''.ddf;
+    Initial Catalog=''' + dest + '''.mdd;
+    MR Init MDM Access=1;
+    MR Init Category Names=1;'''

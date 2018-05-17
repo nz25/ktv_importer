@@ -1,24 +1,24 @@
-﻿from settings import *
-import enums as e
+﻿# prepare_data.py
+
+# pylint: disable-msg=w0614
+
+from settings import *
+from enums import *
+
 from shutil import copyfile
 from win32com import client
 from math import isclose
+from sqlalchemy import create_engine
 
 mdd = client.Dispatch('MDM.Document')
 ddf = client.Dispatch('ADODB.Connection')
-ddf.ConnectionString = '''
-    Provider=mrOleDB.Provider.2;
-    Data Source=mrDataFileDsc;
-    Location=''' + dest + '''.ddf;
-    Initial Catalog=''' + dest + '''.mdd;
-    MR Init MDM Access=1;
-    MR Init Category Names=1;'''
+ddf.ConnectionString = ddf_connection
 
-category_values = {}
+category_map = {}
 adjusted_weight_targets = {}
 
 def back_up():
-    print('Backing up data...')
+    print('Backing up data...', end=' ')
 
     copyfile(src + '.mdd', dest + '.mdd')
     copyfile(src + '.ddf', dest + '.ddf')
@@ -27,41 +27,73 @@ def back_up():
     mdd.DataSources.Default.DBLocation = dest + '.ddf'
     mdd.Save()
     mdd.Close()
+    print('OK')
+
+def check_data():
+    print('Checking data...', end=' ')
+
+    # gets master brand list from db
+    engine = create_engine(mssql_connection)
+    master_brands = engine.execute('select mdm_category, mdm_list from brands').fetchall()
+    brand_lists = set(brand['mdm_list'] for brand in master_brands)
+
+    # get brands/lists from mdd
+    mdd.Open(dest + '.mdd', mode=openConstants.oREAD)
+    mdd_brands = {element.Name: lst for lst in brand_lists for element in mdd.Types(lst)}
+    mdd.Close()
+
+    # checks if master brand rotation corresponds to mdd brand rotation
+    for brand in master_brands:
+        master_list, mdm_list = brand['mdm_list'], mdd_brands[brand['mdm_category']]
+        if master_list != mdm_list:
+            raise Exception('Change in rotation for brand "{0}" (old: {1}, new: {2})'.format(
+                        brand['mdm_category'], master_list, mdm_list
+                    ))
+    
+    print('OK')
 
 def add_weight_variable():
-    print('Adding weight variable...')
+    print('Adding weight variable...', end=' ')
 
     mdd.Open(dest + '.mdd')
     if not mdd.Fields.Exist('weight'):
         wgt_var = mdd.CreateVariable('weight', 'Weight')
-        wgt_var.DataType = e.DataTypeConstants.mtDouble
-        wgt_var.UsageType = e.VariableUsageConstants.vtWeight
+        wgt_var.DataType = DataTypeConstants.mtDouble
+        wgt_var.UsageType = VariableUsageConstants.vtWeight
         mdd.Fields.Add(wgt_var)
     mdd.Save()
     mdd.Close()
+    print('OK')
 
-def init_category_maps():
-    print('Intializing category map...')
-    mdd.Open(dest + '.mdd')
+def read_category_map():
+    print('Reading category map...', end=' ')
+    mdd.Open(dest + '.mdd', mode=openConstants.oREAD)
     for i in range(mdd.CategoryMap.Count):
-        category_values[mdd.CategoryMap.ItemValue(i)] = mdd.CategoryMap.ItemName(i)
+        category_map[mdd.CategoryMap.ItemValue(i)] = mdd.CategoryMap.ItemName(i)
     mdd.Close()
+    print('{0} items'.format(len(category_map)))
 
 def clean_data():
-    print('Cleaning data...')
 
     ddf.Open()
     ddf.Execute("exec xp_syncdb")
 
     # basco checks
+    print('Cleaning data...', end=' ')
     _, rows_affected = ddf.Execute('delete from vdata where not comp.ContainsAny({comp, comp_sc})')
-    print('    {0} incompletes removed'.format(rows_affected))
+    print('{0} incompletes removed'.format(rows_affected))
+
+    print('Cleaning data...', end=' ')
     _, rows_affected = ddf.Execute('delete from vdata where DataCollection.Status.ContainsAny({Test})')
-    print('    {0} test interviews removed'.format(rows_affected))
+    print('{0} test interviews removed'.format(rows_affected))
+    
+    print('Cleaning data...', end=' ')
     _, rows_affected = ddf.Execute('delete from vdata where f5g.AnswerCount() = 0')
-    print('    {0} interviews with f5g = 0 removed'.format(rows_affected))
+    print('{0} interviews with f5g = 0 removed'.format(rows_affected))
+    
+    print('Cleaning data...', end=' ')
     _, rows_affected = ddf.Execute('delete from vdata where cdouble(intend-intstart)*60*24 <= 5')
-    print('    {0} interviews with interview duration <= 5 minutes removed'.format(rows_affected))
+    print('{0} interviews with interview duration <= 5 minutes removed'.format(rows_affected))
  
     # # testing weight normalization by overwriting c_15 with c_20
     # _, rows_affected = ddf.Execute('update vdata set qage = {c_20} where qage = {c_15}')
@@ -70,7 +102,6 @@ def clean_data():
     ddf.Close()
 
 def get_frequences(var):
-    print('    Looking at data...')
     ddf.Open()
     rs, _ = ddf.Execute('select {0}, count(*) as c from vdata group by {0}'.format(var))
     temp = {}
@@ -91,44 +122,47 @@ def adjust_weight_targets(var):
     # normalizing intial weight if sum of all targets is less than 100
     normalization_factor = 100 / sum(adjusted_weight_targets[var].values())
     if isclose(normalization_factor, 1.0, abs_tol=0.0):
-        print('    OK')
+        print('OK')
     else:
-        print('    Categories missing. Increasing {0} factors by {1:.1%}'.format(var, normalization_factor - 1))
+        print('Categories missing. Increasing {0} factors by {1:.1%}'.format(var, normalization_factor - 1))
         adjusted_weight_targets[var] = {k: v * normalization_factor for k, v in adjusted_weight_targets[var].items()}
         
 def weight_data():
-    print('Weighting data...')
+    print('Weighting data...', end=' ')
 
     mdd.Open(dest + '.mdd')
 
     engine = client.Dispatch('mrWeight.WeightEngine')
     engine.Initialize(mdd)
-    wgt = engine.CreateWeight('weight', ','.join(adjusted_weight_targets.keys()), e.wtMethod.wtRims)
+    wgt = engine.CreateWeight('weight', ','.join(adjusted_weight_targets.keys()), wtMethod.wtRims)
 
     for k in adjusted_weight_targets.keys():
         rim = wgt.Rims[k]
         for i in range(rim.RimElements.Count):
             rim_element = rim.RimElements.Item(i)
-            rim_element_category_name = category_values[rim_element.Category[0]]
+            rim_element_category_name = category_map[rim_element.Category[0]]
             rim_element.Target = adjusted_weight_targets[k].get(rim_element_category_name, 0.0)
 
-    wgt.TotalType = e.wtTotalType.wtUnweightedInput
+    wgt.TotalType = wtTotalType.wtUnweightedInput
     wgt.MaxWeight = 15
 
     engine.Prepare(wgt)
     engine.Execute(wgt)
 
+    # delete engine object to flush ddf journal
     del engine
 
     mdd.Close()
+    print('OK')
 
 def main():
     back_up()
+    check_data()
     add_weight_variable()
-    init_category_maps()
+    read_category_map()
     clean_data()
     for k in initial_weight_targets.keys():
-        print('Checking weight targets for {0}'.format(k))
+        print('Checking weight targets for {0}...'.format(k), end =" ")
         get_frequences(k)
         adjust_weight_targets(k)
     weight_data()

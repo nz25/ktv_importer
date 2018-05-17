@@ -1,5 +1,10 @@
 from enum import IntEnum
 
+class openConstants(IntEnum):
+    oREAD = 1
+    oREADWRITE = 2
+    oNOSAVE = 3
+
 class DataTypeConstants(IntEnum):
     mtNone = 0
     mtLong = 1
