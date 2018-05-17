@@ -1,0 +1,58 @@
+'HDATA raw
+
+2018-05-17 15:34:00.701045: setting up orm
+2018-05-17 15:34:01.021013: deleting interviews
+2018-05-17 15:34:01.044010: querying ddf
+2018-05-17 15:34:01.574957: looping rs
+2018-05-17 15:35:14.080706: committing
+2018-05-17 15:35:18.866227: complete
+
+'HDATA with cleaning
+
+2018-05-17 15:39:33.356559: setting up orm
+2018-05-17 15:39:33.665559: deleting interviews
+2018-05-17 15:39:33.682559: querying ddf
+2018-05-17 15:39:34.157559: looping rs
+2018-05-17 15:40:48.920559: committing
+2018-05-17 15:40:53.668559: complete
+
+2018-05-17 15:53:36.257718: setting up orm
+2018-05-17 15:53:36.605788: deleting interviews
+2018-05-17 15:53:36.612789: querying ddf
+2018-05-17 15:53:37.056878: looping rs
+2018-05-17 15:54:51.745813: committing
+2018-05-17 15:54:56.539771: complete
+
+'VDATA with cleaning
+
+2018-05-17 16:08:47.109359: setting up orm
+2018-05-17 16:08:47.380359: deleting interviews
+2018-05-17 16:08:47.393359: querying ddf
+2018-05-17 16:08:48.076359: looping rs
+2018-05-17 16:10:14.064359: committing
+2018-05-17 16:10:19.282359: complete
+
+2018-05-17 16:12:11.844359: setting up orm
+2018-05-17 16:12:12.141359: deleting interviews
+2018-05-17 16:12:12.154359: querying ddf
+2018-05-17 16:12:12.802359: looping rs
+2018-05-17 16:13:38.313359: committing
+2018-05-17 16:13:43.516359: complete
+
+'SQLite with orm (session.commit())
+
+2018-05-17 15:57:35.377545: setting up orm
+2018-05-17 15:57:35.723579: deleting interviews
+2018-05-17 15:57:35.737581: querying ddf
+2018-05-17 15:57:35.740581: reading categorymap
+2018-05-17 15:57:43.528360: looping rs
+2018-05-17 15:57:48.290836: committing
+2018-05-17 15:57:53.271334: complete
+
+2018-05-17 16:20:59.002359: setting up orm
+2018-05-17 16:20:59.264359: deleting interviews
+2018-05-17 16:20:59.277359: querying ddf
+2018-05-17 16:20:59.280359: reading categorymap
+2018-05-17 16:21:06.711359: looping rs
+2018-05-17 16:21:11.513359: committing
+2018-05-17 16:21:16.448359: complete

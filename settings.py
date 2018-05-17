@@ -18,7 +18,8 @@ mssql_connection = 'mssql+pyodbc://AVANUSQL702/dw_04_live?driver=SQL+Server+Nati
 ddf_connection = '''
     Provider=mrOleDB.Provider.2;
     Data Source=mrDataFileDsc;
-    Location=''' + dest + '''.ddf;
-    Initial Catalog=''' + dest + '''.mdd;
+    Location={0}.ddf;
+    Initial Catalog={0}.mdd;
     MR Init MDM Access=1;
-    MR Init Category Names=1;'''
+    MR Init Category Names=1;'''.format(dest)
+pyodbc_connection = 'Driver={SQL Server};Server=avanusql702;Database=dw_temp;Trusted_Connection=yes;'
