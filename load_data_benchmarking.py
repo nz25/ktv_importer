@@ -4,21 +4,20 @@
 
 from settings import *
 
+from win32com import client
+
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy import MetaData, Table, Column
 from sqlalchemy import Integer, DateTime, Unicode, Float
 
-import sqlite3
-from prepare_data import category_map, read_category_map
-
 from datetime import datetime     
 
 Base = declarative_base()
 
 class Interview(Base):
-    __tablename__ = 'live_interviews_sqlite'
+    __tablename__ = 'live_interviews_mroledb'
 
     serial = Column(Integer, primary_key=True)
     fbgrot = Column(Unicode(50), nullable=False)
@@ -40,62 +39,52 @@ class Interview(Base):
 
 print('{0}: setting up orm'.format(datetime.now()))
 
-msssql_engine = create_engine(mssql_connection)
-Base.metadata.create_all(msssql_engine)
-session = Session(bind=msssql_engine)
+mssql_engine = create_engine(mssql_connection)
+Base.metadata.create_all(mssql_engine)
+session = Session(bind=mssql_engine)
 
 print('{0}: deleting interviews'.format(datetime.now()))
-session.execute('delete from live_interviews_sqlite')
+session.execute('delete from live_interviews_mroledb')
 
 print('{0}: querying ddf'.format(datetime.now()))
 
-conn = sqlite3.connect(dest + '.ddf')
-cursor = conn.cursor()
-result = cursor.execute('''
+ddf = client.Dispatch('ADODB.Connection')
+ddf.ConnectionString = ddf_connection
+ddf.Open()
+rs, _ = ddf.Execute('''
     select
-        [Respondent.Serial:L] as serial,
-        [fbgrot:C1] as fbgrot,
-        [DataCollection.StartTime:T] as start_time,
-        [f$$:L] as age,
-        [fa:C1] as fa,
-        [fb:C1] as fb,
-        [fc:C1] as fc,
-        [ff:C1] as ff,
-        [fg:C1] as fg,
-        [fha:C1] as fha,
-        [fhb:C1] as fhb,
-        [f12a:C1] as f12a,
-        [f12b:C1] as f12b,
-        [weight:D] as weight
-    from L1
-    ''')
+        Respondent.Serial as serial, fbgrot,
+        DataCollection.StartTime as start_time,
+        f$$ as age, fa, fb, fc, ff, fg,
+        fha, fhb, f12a, f12b, weight
+    from VDATA''')
 
-print('{0}: reading categorymap'.format(datetime.now()))
-read_category_map()
-
-#1. using orm
+def clean_value(rs_field):
+    return ''.join(c for c in rs_field.Value if c not in '{}') if rs_field.Value else None
 
 print('{0}: looping rs'.format(datetime.now()))
 
-for row in result:
+while not rs.EOF:
     i = Interview(
-        serial = row[0],
-        fbgrot = category_map.get(row[1]),
-        start_time = row[2],
-        age = row[3],
-        fa = category_map.get(row[4]),
-        fb = category_map.get(row[5]),
-        fc = category_map.get(row[6]),
-        ff = category_map.get(row[7]),
-        fg = category_map.get(row[8]),
-        fha = category_map.get(row[9]),
-        fhb = category_map.get(row[10]),
-        f12a = category_map.get(row[11]),
-        f12b = category_map.get(row[12]),
-        weight = row[13]
+        serial = rs.Fields['serial'].Value,
+        fbgrot = rs.Fields['fbgrot'].Value[1:-1],
+        start_time = rs.Fields['start_time'].Value,
+        age = rs.Fields['age'].Value,
+        fa = rs.Fields['fa'].Value[1:-1],
+        fb = rs.Fields['fb'].Value[1:-1],
+        fc = rs.Fields['fc'].Value[1:-1],
+        ff = rs.Fields['ff'].Value[1:-1],
+        fg = rs.Fields['fg'].Value[1:-1],
+        fha = rs.Fields['fha'].Value[1:-1],
+        fhb = None if rs.Fields['fhb'].Value is None else rs.Fields['fhb'].Value[1:-1],
+        f12a = rs.Fields['f12a'].Value[1:-1],
+        f12b = None if rs.Fields['f12b'].Value is None else rs.Fields['f12b'].Value[1:-1],
+        weight = rs.Fields['weight'].Value
     )
     session.add(i)
-    
+    rs.MoveNext()
+
+ddf.Close()
 print('{0}: committing'.format(datetime.now()))
 
 session.commit()

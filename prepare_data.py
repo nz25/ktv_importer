@@ -12,7 +12,7 @@ from sqlalchemy import create_engine
 
 mdd = client.Dispatch('MDM.Document')
 ddf = client.Dispatch('ADODB.Connection')
-ddf.ConnectionString = ddf_connection
+ddf.ConnectionString = mroledb_connection
 
 category_map = {}
 adjusted_weight_targets = {}
@@ -95,9 +95,9 @@ def clean_data():
     _, rows_affected = ddf.Execute('delete from vdata where cdouble(intend-intstart)*60*24 <= 5')
     print('{0} interviews with interview duration <= 5 minutes removed'.format(rows_affected))
  
-    # # testing weight normalization by overwriting c_15 with c_20
-    # _, rows_affected = ddf.Execute('update vdata set qage = {c_20} where qage = {c_15}')
-    # print('Testing weight normalization. {0} interview adjusted (c_15 > c_20)'.format(rows_affected))
+    # testing weight normalization by overwriting c_15 with c_20
+    _, rows_affected = ddf.Execute('update vdata set qage = {c_20} where qage = {c_15}')
+    print('Testing weight normalization. {0} interview adjusted (c_15 > c_20)'.format(rows_affected))
 
     ddf.Close()
 
@@ -107,9 +107,8 @@ def get_frequences(var):
     temp = {}
     while not rs.EOF:
         k, v = rs.Fields
-        if v.Value > 0:
-            cat = ''.join(c for c in k.Value if c not in '{}') # stripping curly braces: {c_30} -> c_30
-            temp[cat] = v.Value
+        cat = ''.join(c for c in k.Value if c not in '{}') # stripping curly braces: {c_30} -> c_30
+        temp[cat] = v.Value
         rs.MoveNext()
     adjusted_weight_targets[var] = temp
     ddf.Close()

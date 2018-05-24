@@ -14,12 +14,13 @@ initial_weight_targets = {
 }
 
 # connection strings
-mssql_connection = 'mssql+pyodbc://AVANUSQL702/dw_04_live?driver=SQL+Server+Native+Client+11.0?trusted_connection=yes'
-ddf_connection = '''
+mssql_connection = 'mssql+pyodbc://./dw_04_live?driver=SQL+Server+Native+Client+11.0?trusted_connection=yes'
+sqlite_connection = '{0}.ddf'.format(dest)
+mroledb_connection = '''
     Provider=mrOleDB.Provider.2;
     Data Source=mrDataFileDsc;
     Location={0}.ddf;
     Initial Catalog={0}.mdd;
     MR Init MDM Access=1;
     MR Init Category Names=1;'''.format(dest)
-pyodbc_connection = 'Driver={SQL Server};Server=avanusql702;Database=dw_temp;Trusted_Connection=yes;'
+
