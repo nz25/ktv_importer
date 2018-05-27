@@ -11,7 +11,7 @@ from sqlalchemy import MetaData, Table, Column
 from sqlalchemy import Integer, DateTime, Unicode, Float
 
 import sqlite3
-from prepare_data import category_map, read_category_map
+#from prepare_data import category_map, read_category_map
 
 from datetime import datetime     
 

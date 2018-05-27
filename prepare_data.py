@@ -52,19 +52,6 @@ def check_data():
     
     print('OK')
 
-def add_weight_variable():
-    print('Adding weight variable...', end=' ')
-
-    mdd.Open(dest + '.mdd')
-    if not mdd.Fields.Exist('weight'):
-        wgt_var = mdd.CreateVariable('weight', 'Weight')
-        wgt_var.DataType = DataTypeConstants.mtDouble
-        wgt_var.UsageType = VariableUsageConstants.vtWeight
-        mdd.Fields.Add(wgt_var)
-    mdd.Save()
-    mdd.Close()
-    print('OK')
-
 def read_category_map():
     print('Reading category map...', end=' ')
     mdd.Open(dest + '.mdd', mode=openConstants.oREAD)
@@ -76,7 +63,6 @@ def read_category_map():
 def clean_data():
 
     ddf.Open()
-    ddf.Execute("exec xp_syncdb")
 
     # basco checks
     print('Cleaning data...', end=' ')
@@ -125,7 +111,24 @@ def adjust_weight_targets(var):
     else:
         print('Categories missing. Increasing {0} factors by {1:.1%}'.format(var, normalization_factor - 1))
         adjusted_weight_targets[var] = {k: v * normalization_factor for k, v in adjusted_weight_targets[var].items()}
-        
+
+def add_weight_variable():
+    print('Adding weight variable...', end=' ')
+
+    mdd.Open(dest + '.mdd')
+    if not mdd.Fields.Exist('weight'):
+        wgt_var = mdd.CreateVariable('weight', 'Weight')
+        wgt_var.DataType = DataTypeConstants.mtDouble
+        wgt_var.UsageType = VariableUsageConstants.vtWeight
+        mdd.Fields.Add(wgt_var)
+    mdd.Save()
+    mdd.Close()
+
+    ddf.Open()
+    ddf.Execute('exec xp_syncdb')
+    ddf.Close()
+    print('OK')
+  
 def weight_data():
     print('Weighting data...', end=' ')
 
@@ -157,13 +160,13 @@ def weight_data():
 def main():
     back_up()
     check_data()
-    add_weight_variable()
     read_category_map()
     clean_data()
     for k in initial_weight_targets.keys():
         print('Checking weight targets for {0}...'.format(k), end =" ")
         get_frequences(k)
         adjust_weight_targets(k)
+    add_weight_variable()
     weight_data()
     print('Data preparation complete')
 
