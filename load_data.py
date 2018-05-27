@@ -1,103 +1,115 @@
-# load_data.py
-
-# pylint: disable-msg=w0614
-
-from settings import *
-
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session
-from sqlalchemy import MetaData, Table, Column
-from sqlalchemy import Integer, DateTime, Unicode, Float
-
 import sqlite3
-#from prepare_data import category_map, read_category_map
+import xml.etree.cElementTree as et
+from sqlalchemy import create_engine
 
-from datetime import datetime     
+from timeit import timeit
 
-Base = declarative_base()
+mdd_path = 'D:\\ktv\\KTVONLINE_18_IMPORT.mdd'
+ddf_path = 'D:\\ktv\\KTVONLINE_18_IMPORT.ddf'
+category_map = {}
+records = []
 
-class Interview(Base):
-    __tablename__ = 'live_interviews'
+# sqlite - source db
+sqlite_conn = sqlite3.connect(ddf_path)
+sqlite_cursor = sqlite_conn.cursor()
 
-    serial = Column(Integer, primary_key=True)
-    fbgrot = Column(Unicode(50), nullable=False)
-    start_time = Column(DateTime, nullable=False)
-    age = Column(Integer, nullable=False)
-    fa = Column(Unicode(50), nullable=False)
-    fb = Column(Unicode(50), nullable=False)
-    fc = Column(Unicode(50), nullable=False)
-    ff = Column(Unicode(50), nullable=False)
-    fg = Column(Unicode(50), nullable=False)
-    fha = Column(Unicode(50), nullable=False)
-    fhb = Column(Unicode(50), nullable=True)
-    f12a = Column(Unicode(50), nullable=False)
-    f12b = Column(Unicode(50), nullable=True)
-    weight = Column(Float, nullable=False)
+# ms sql - destination db
+mssql_connection = 'mssql+pyodbc://./dw_04_live?driver=SQL+Server+Native+Client+11.0?trusted_connection=yes'
+mssql_engine = create_engine(mssql_connection)
+mssql_conn = mssql_engine.connect().connection
+mssql_cursor = mssql_conn.cursor()
 
-    def __repr__(self):
-        return '<Interview(serial={0})>'.format(self.serial)
 
-print('{0}: setting up orm'.format(datetime.now()))
+def read_category_map():
+    print('Reading category map...', end=' ')
+    tree = et.parse(mdd_path)
+    map_root = tree.getroot()[0].find('categorymap')
+    global category_map
+    category_map = {int(m.attrib['value']): m.attrib['name'] for m in map_root}
+    print('OK')
 
-msssql_engine = create_engine(mssql_connection)
-Base.metadata.create_all(msssql_engine)
-session = Session(bind=msssql_engine)
 
-print('{0}: deleting interviews'.format(datetime.now()))
-session.execute('delete from live_interviews_sqlite')
+def empty_import_tables():
+    print('Emptying destination tables...', end=' ')
+    mssql_cursor.execute('delete from import_open')
+    mssql_cursor.execute('delete from import_interviews')
+    mssql_conn.commit()
+    print('OK')
 
-print('{0}: querying ddf'.format(datetime.now()))
 
-conn = sqlite3.connect(dest + '.ddf')
-cursor = conn.cursor()
-result = cursor.execute('''
-    select
-        [Respondent.Serial:L] as serial,
-        [fbgrot:C1] as fbgrot,
-        [DataCollection.StartTime:T] as start_time,
-        [f$$:L] as age,
-        [fa:C1] as fa,
-        [fb:C1] as fb,
-        [fc:C1] as fc,
-        [ff:C1] as ff,
-        [fg:C1] as fg,
-        [fha:C1] as fha,
-        [fhb:C1] as fhb,
-        [f12a:C1] as f12a,
-        [f12b:C1] as f12b,
-        [weight:D] as weight
-    from L1
-    ''')
+def read_import_interviews():
+    print('Reading interviews...', end=' ')
 
-print('{0}: reading categorymap'.format(datetime.now()))
-read_category_map()
+    global records
+    records = []
 
-#1. using orm
+    result = sqlite_cursor.execute('''
+        select
+            [Respondent.Serial:L] as serial,
+            [fbgrot:C1] as fbgrot,
+            [DataCollection.StartTime:T] as start_time,
+            [f$$:L] as age,
+            [fa:C1] as fa,
+            [fb:C1] as fb,
+            [fc:C1] as fc,
+            [ff:C1] as ff,
+            [fg:C1] as fg,
+            [fha:C1] as fha,
+            [fhb:C1] as fhb,
+            [f12a:C1] as f12a,
+            [f12b:C1] as f12b,
+            [weight:D] as weight
+        from L1
+        ''')
 
-print('{0}: looping rs'.format(datetime.now()))
+    for row in result:
+        record = (
+            row[0],  # serial
+            category_map[row[1]],  # fbgrot
+            row[2],  # start_time
+            row[3],  # age
+            category_map[row[4]],  # fa
+            category_map[row[5]],  # fb
+            category_map[row[6]],  # fc
+            category_map[row[7]],  # ff
+            category_map[row[8]],  # fg
+            category_map[row[9]],  # fha
+            category_map.get(row[10], 'na'),  # fhb
+            category_map[row[11]],  # f12a
+            category_map.get(row[12], 'na'),  # f12b
+            row[13]  # weight
+        )
+        stringified_record = str(record)
+        records.append(stringified_record)
+    print('OK')
 
-for row in result:
-    i = Interview(
-        serial = row[0],
-        fbgrot = category_map.get(row[1]),
-        start_time = row[2],
-        age = row[3],
-        fa = category_map.get(row[4]),
-        fb = category_map.get(row[5]),
-        fc = category_map.get(row[6]),
-        ff = category_map.get(row[7]),
-        fg = category_map.get(row[8]),
-        fha = category_map.get(row[9]),
-        fhb = category_map.get(row[10]),
-        f12a = category_map.get(row[11]),
-        f12b = category_map.get(row[12]),
-        weight = row[13]
-    )
-    session.add(i)
-    
-print('{0}: committing'.format(datetime.now()))
 
-session.commit()
+def chunker(seq, size):
+    return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
-print('{0}: complete'.format(datetime.now()))
+
+def write_import_interviews():
+    print('Inserting interviews...', end=' ')
+    insert_header = '''
+        insert into import_interviews
+        (serial, fbgrot, start_time, age, fa, fb, fc, ff, fg, fha, fhb, f12a, f12b, weight)
+        values 
+    '''
+    for batch in chunker(records, 1000):
+        insert_values = ','.join(batch)
+        insert_statement = insert_header + insert_values
+        mssql_cursor.execute(insert_statement)
+        mssql_conn.commit()
+    print('OK')
+
+
+def main():
+    read_category_map()
+    empty_import_tables()
+    read_import_interviews()
+    write_import_interviews()
+    print('Complete')
+
+
+if __name__ == '__main__':
+    print(timeit(main, number=1))

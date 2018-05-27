@@ -82,8 +82,8 @@ def clean_data():
     print('{0} interviews with interview duration <= 5 minutes removed'.format(rows_affected))
  
     # testing weight normalization by overwriting c_15 with c_20
-    _, rows_affected = ddf.Execute('update vdata set qage = {c_20} where qage = {c_15}')
-    print('Testing weight normalization. {0} interview adjusted (c_15 > c_20)'.format(rows_affected))
+    # _, rows_affected = ddf.Execute('update vdata set qage = {c_20} where qage = {c_15}')
+    # print('Testing weight normalization. {0} interview adjusted (c_15 > c_20)'.format(rows_affected))
 
     ddf.Close()
 
