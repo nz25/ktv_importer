@@ -10,6 +10,8 @@ from win32com import client
 from math import isclose
 from sqlalchemy import create_engine
 
+from timeit import timeit
+
 mdd = client.Dispatch('MDM.Document')
 ddf = client.Dispatch('ADODB.Connection')
 ddf.ConnectionString = mroledb_connection
@@ -168,7 +170,7 @@ def main():
         adjust_weight_targets(k)
     add_weight_variable()
     weight_data()
-    print('Data preparation complete')
+    print('Data preparation complete', end='\n\n')
 
 if __name__ == '__main__':
-    main()
+    print(timeit(main, number=1))

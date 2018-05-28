@@ -29,11 +29,11 @@ def read_category_map():
 def empty_import_tables():
     print('Emptying destination tables...', end=' ')
     mssql_cursor.execute('delete from import_open')
+    mssql_cursor.execute('delete from import_fc')
     mssql_cursor.execute('delete from import_funnel')
     mssql_cursor.execute('delete from import_interviews')
     mssql_conn.commit()
     print('OK')
-
 
 def read_import_interviews():
     print('Reading interviews...', end=' ')
@@ -81,7 +81,6 @@ def read_import_interviews():
     print('OK')
     return records
 
-
 def read_import_funnel():
     print('Reading funnel questions...', end=' ')
 
@@ -106,6 +105,32 @@ def read_import_funnel():
     print('OK')
     return records
 
+def read_import_fc():
+    print('Reading fc...', end=' ')
+
+    records = []
+
+    tables = sqlite_cursor.execute('''
+        select TableName, DSCTableName
+        from Levels
+        where DSCTableName in ('f8l')
+        ''')
+    table_name = tables.fetchone()[0]
+    
+    result = sqlite_cursor.execute('''
+        select [:P1], [LevelId:C1], [f8:C1]
+        from {0}
+        '''.format(table_name))
+
+    for row in result:
+        serial = row[0]
+        category = category_map[row[1]]
+        brand = category_map[row[2]]
+        record = str((serial, category, brand))
+        records.append(record)
+        
+    print('OK')
+    return records
 
 def read_import_open():
     print('Reading open questions...', end=' ')
@@ -137,10 +162,8 @@ def read_import_open():
     print('OK')
     return records
 
-
 def chunker(seq, size):
     return (seq[pos:pos + size] for pos in range(0, len(seq), size))
-
 
 def write_records(records, table_name):
     print('Inserting into {0}...'.format(table_name), end=' ')
@@ -161,13 +184,14 @@ def main():
     empty_import_tables()
     interviews = read_import_interviews()
     funnel = read_import_funnel()
+    fc = read_import_fc()
     opens = read_import_open()
 
     write_records(interviews, 'import_interviews')
     write_records(funnel, 'import_funnel')
+    write_records(fc, 'import_fc')
     write_records(opens, 'import_open')
-    print('Complete')
-
+    print('Data loading complete',end='\n\n')
 
 if __name__ == '__main__':
     print(timeit(main, number=1))
