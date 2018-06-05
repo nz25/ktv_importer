@@ -1,7 +1,9 @@
 # main.py
 
-import prepare_data
-import load_data
+from prepare_data import main as prepare_data
+from load_data import main as load_data
+from process_open import main as process_open
 
-prepare_data.main()
-load_data.main()
+prepare_data()
+load_data()
+process_open()

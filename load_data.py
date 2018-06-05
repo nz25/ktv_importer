@@ -1,11 +1,17 @@
+# load_data.py
+# pylint: disable-msg=w0614
+
+from settings import *
+
 import sqlite3
 import xml.etree.cElementTree as et
+import json
 from sqlalchemy import create_engine
 
 from timeit import timeit
 
-mdd_path = 'D:\\ktv\\KTVONLINE_18_IMPORT.mdd'
-ddf_path = 'D:\\ktv\\KTVONLINE_18_IMPORT.ddf'
+mdd_path = dest + '.mdd'
+ddf_path = dest + '.ddf'
 category_map = {}
 
 # sqlite - source db
@@ -13,18 +19,9 @@ sqlite_conn = sqlite3.connect(ddf_path)
 sqlite_cursor = sqlite_conn.cursor()
 
 # ms sql - destination db
-mssql_connection = 'mssql+pyodbc://./dw_04_live?driver=SQL+Server+Native+Client+11.0?trusted_connection=yes'
 mssql_engine = create_engine(mssql_connection)
 mssql_conn = mssql_engine.connect().connection
 mssql_cursor = mssql_conn.cursor()
-
-def read_category_map():
-    print('Reading category map...', end=' ')
-    tree = et.parse(mdd_path)
-    map_root = tree.getroot()[0].find('categorymap')
-    global category_map
-    category_map = {int(m.attrib['value']): m.attrib['name'] for m in map_root}
-    print('OK')
 
 def empty_import_tables():
     print('Emptying destination tables...', end=' ')
@@ -33,6 +30,14 @@ def empty_import_tables():
     mssql_cursor.execute('delete from import_funnel')
     mssql_cursor.execute('delete from import_interviews')
     mssql_conn.commit()
+    print('OK')
+
+def read_category_map():
+    print('Reading category map...', end=' ')
+    tree = et.parse(mdd_path)
+    map_root = tree.getroot()[0].find('categorymap')
+    global category_map
+    category_map = {int(m.attrib['value']): m.attrib['name'] for m in map_root}
     print('OK')
 
 def read_import_interviews():
@@ -120,6 +125,7 @@ def read_import_fc():
     result = sqlite_cursor.execute('''
         select [:P1], [LevelId:C1], [f8:C1]
         from {0}
+        where [f8:C1] > 0
         '''.format(table_name))
 
     for row in result:
@@ -155,8 +161,8 @@ def read_import_open():
         for row in result:
             serial = row[0]
             iteration = int(category_map[row[1]][2:])
-            answer = row[2]
-            record = str((serial, question, iteration, answer))
+            answer = row[2].replace("'", "#####")
+            record = str((serial, question, iteration, answer)).replace("#####", "''")
             records.append(record)
         
     print('OK')
@@ -178,10 +184,10 @@ def write_records(records, table_name):
         mssql_conn.commit()
     print('OK')
 
-
 def main():
-    read_category_map()
     empty_import_tables()
+    read_category_map()
+    
     interviews = read_import_interviews()
     funnel = read_import_funnel()
     fc = read_import_fc()
@@ -191,7 +197,7 @@ def main():
     write_records(funnel, 'import_funnel')
     write_records(fc, 'import_fc')
     write_records(opens, 'import_open')
-    print('Data loading complete',end='\n\n')
+    print('Data loading complete', end='\n\n')
 
 if __name__ == '__main__':
     print(timeit(main, number=1))

@@ -1,5 +1,5 @@
 # files paths
-src = r'D:\ktv\KTVONLINE_18'
+src = r'D:\ktv\KTV_Online_FINAL_withOpens'
 dest = r'D:\ktv\KTVONLINE_18_IMPORT'
 
 # weight targets
