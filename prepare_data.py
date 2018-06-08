@@ -37,11 +37,16 @@ def check_data():
     # gets master brand list from db
     engine = create_engine(mssql_connection)
     master_brands = engine.execute('select mdm_category, mdm_list from brands').fetchall()
-    brand_lists = set(brand['mdm_list'] for brand in master_brands)
+    brand_lists = set(brand[1] for brand in master_brands)
 
     # get brands/lists from mdd
     mdd.Open(dest + '.mdd', mode=openConstants.oREAD)
     mdd_brands = {element.Name: lst for lst in brand_lists for element in mdd.Types(lst)}
+    mdd_brands = {}
+    for lst in brand_lists:
+        for element in mdd.Types(lst):
+            mdd_brands[element.Name] = lst
+
     mdd.Close()
 
     # checks if master brand rotation corresponds to mdd brand rotation

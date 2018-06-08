@@ -1,6 +1,6 @@
 # files paths
-src = r'D:\ktv\KTV_Online_FINAL_withOpens'
-dest = r'D:\ktv\KTVONLINE_18_IMPORT'
+src = r'\\avanufil002\IAV_internal\Dashboard BVR\KTV_2015\LiveDaten\KTVONLINE_18'
+dest = r'\\avanufil002\IAV_internal\Dashboard BVR\KTV_2015\LiveDaten\KTVONLINE_18_IMPORT'
 
 # weight targets
 initial_weight_targets = {

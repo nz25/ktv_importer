@@ -5,7 +5,6 @@ from settings import *
 
 import sqlite3
 import xml.etree.cElementTree as et
-import json
 from sqlalchemy import create_engine
 
 from timeit import timeit
@@ -123,9 +122,11 @@ def read_import_fc():
     table_name = tables.fetchone()[0]
     
     result = sqlite_cursor.execute('''
-        select [:P1], [LevelId:C1], [f8:C1]
-        from {0}
-        where [f8:C1] > 0
+        select b.[Respondent.Serial:L], a.[LevelId:C1], a.[f8:C1]
+        from {0} as a
+            join L1 as b
+                on a.[:P1] = b.[:P0]
+        where a.[f8:C1] > 0
         '''.format(table_name))
 
     for row in result:
@@ -154,15 +155,17 @@ def read_import_open():
         table_name = table[0]
         question = table[1][:-1]
         result = sqlite_cursor.execute('''
-            select [:P1], [LevelId:C1], [{0}:X]
-            from {1}
-            where [{0}:X] <> ''
+            select b.[Respondent.Serial:L], a.[LevelId:C1], a.[{0}:X]
+            from {1} as a
+                join L1 as b
+                    on a.[:P1] = b.[:P0]
+            where a.[{0}:X] <> ''
             '''.format(question, table_name))
         for row in result:
             serial = row[0]
-            iteration = int(category_map[row[1]][2:])
+            question = table[1] + '[{' + category_map[row[1]] + '}].' + table[1][:-1]
             answer = row[2].replace("'", "#####")
-            record = str((serial, question, iteration, answer)).replace("#####", "''")
+            record = str((serial, question, answer)).replace("#####", "''")
             records.append(record)
         
     print('OK')

@@ -1,4 +1,4 @@
-# process_open.py
+# create_outputs.py
  
 def main():
     pass
