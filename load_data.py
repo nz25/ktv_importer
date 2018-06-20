@@ -2,6 +2,8 @@
 # pylint: disable-msg=w0614
 
 from settings import *
+from enums import *
+from win32com import client
 
 import sqlite3
 import xml.etree.cElementTree as et
@@ -139,7 +141,7 @@ def read_import_fc():
     print('OK')
     return records
 
-def read_import_open():
+def read_import_open_old():
     print('Reading open questions...', end=' ')
 
     questions = 'f1l f2l'.split()
@@ -167,6 +169,48 @@ def read_import_open():
             answer = row[2].replace("'", "#####")
             record = str((serial, question, answer)).replace("#####", "''")
             records.append(record)
+        
+    print('OK')
+    return records
+
+def read_import_open():
+    print('Reading open questions...', end=' ')
+
+    # reading ignored variables from db
+    ignored_variables = [v[0] for v in mssql_engine.execute('select variable from open_variables where type = ?', 'ignored').fetchall()]
+
+    # reading all text variables from mdd
+    mdm_variables = []
+    mdd = client.Dispatch('MDM.Document')
+    mdd.Open(mdd_path,mode=openConstants.oREAD)
+    for v in mdd.Variables:
+        if v.DataType == DataTypeConstants.mtText and not v.IsSystemVariable and v.HasCaseData:
+            if not v.FullName in ignored_variables:
+                mdm_variables.append(v.FullName)
+    mdd.Close()
+
+    ddf = client.Dispatch('ADODB.Connection')
+    ddf.ConnectionString = mroledb_connection
+    ddf.Open()
+    rs, _ = ddf.Execute('select Respondent.Serial, {0} from vdata'.format(','.join(mdm_variables)))
+
+    records = []
+    rs.MoveFirst()
+    while not rs.EOF:
+        for f in rs.Fields:
+            answer = None
+            if f.Name == 'Respondent.Serial':
+                serial = f.Value
+            else:
+                answer = f.Value
+            if answer:
+                variable = f.Name
+                answer = answer.replace("'", "#####")
+                record = str((serial, variable, answer)).replace("#####", "''")
+                records.append(record)
+        rs.MoveNext()
+
+    ddf.Close()
         
     print('OK')
     return records

@@ -1,6 +1,6 @@
 # files paths
-src = r'\\avanufil002\IAV_internal\Dashboard BVR\KTV_2015\LiveDaten\KTVONLINE_18'
-dest = r'\\avanufil002\IAV_internal\Dashboard BVR\KTV_2015\LiveDaten\KTVONLINE_18_IMPORT'
+src = r'D:\ktv\KTVONLINE_1806'
+dest = r'D:\ktv\KTVONLINE_1806_IMPORT'
 
 # weight targets
 initial_weight_targets = {
@@ -14,7 +14,7 @@ initial_weight_targets = {
 }
 
 # connection strings
-mssql_connection = 'mssql+pyodbc://./dw_04_live?driver=SQL+Server+Native+Client+11.0?trusted_connection=yes'
+mssql_connection = 'mssql+pyodbc://avanusql702/dw_04_live?driver=SQL+Server+Native+Client+11.0?trusted_connection=yes'
 sqlite_connection = '{0}.ddf'.format(dest)
 mroledb_connection = '''
     Provider=mrOleDB.Provider.2;
