@@ -22,14 +22,14 @@ def tokenize():
         "select variable from open_variables where type = 'brand'", engine)
     questions = df_brand.values.tolist()
     questions = [q[0] for q in questions]
-    df = df[(df['answer'].str.contains(r'\\n') == True)
+    df = df[(df['answer'].str.contains('\n') == True)
             & (df['variable'].isin(questions))]
     df = df.reset_index(drop=True)
     df_token = pd.DataFrame(None, columns=[
                             'serial', 'variable', 'position', 'separator', 'answer', 'answer_token'])
 
     for i in range(len(df)):
-        token = df.loc[(i, 'answer')].split(r'\n')
+        token = df.loc[(i, 'answer')].split('\n')
         token[:] = filter(None, token)
         for j in range(len(token)):
             row = df.iloc[[i]].copy(deep=True)

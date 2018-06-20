@@ -204,9 +204,11 @@ def read_import_open():
             else:
                 answer = f.Value
             if answer:
+                if serial == 50:
+                    print(answer)
                 variable = f.Name
-                answer = answer.replace("'", "#####")
-                record = str((serial, variable, answer)).replace("#####", "''")
+                answer = answer.replace("'", "''")
+                record = '(' + str(serial) + ", '" + variable + "', '" + answer + "')"
                 records.append(record)
         rs.MoveNext()
 
