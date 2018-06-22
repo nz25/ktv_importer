@@ -1,4 +1,7 @@
 # process_open.py
+
+import settings as s
+
 import string
 import pandas as pd
 import pickle
@@ -9,15 +12,14 @@ import Levenshtein as lv
 from CharVectorizer import CharVectorizer
 from timeit import timeit
 
-engine = create_engine(
-    'mssql+pyodbc://AVANUSQL702/dw_04_live?driver=SQL+Server+Native+Client+11.0?trusted_connection=yes')
+engine = create_engine(s.mssql_connection)
 
 
 def tokenize():
     
     print('starting tokenize...', end=' ')
-    engine.execute('delete from open_tokenized')
-    df = pd.read_sql("select * from import_open", engine)
+    engine.execute(f'delete from open_tokenized where {s.serial_criteria}')
+    df = pd.read_sql(f'select * from import_open where {s.serial_criteria}', engine)
     df_brand = pd.read_sql(
         "select variable from open_variables where type = 'brand'", engine)
     questions = df_brand.values.tolist()
@@ -76,7 +78,7 @@ def lev():
     #df_coded = pd.DataFrame(data = None, columns = ['serial', 'variable', 'answer', 'func', 'code', 'score', 'candidate'])
 
     df = pd.read_sql(
-        "select serial, variable, position, answer from open_brands_uncoded", engine)
+        f'select serial, variable, position, answer from open_brands_uncoded where {s.serial_criteria}', engine)
     verbatims = df.to_dict('list')
     verbatims['func'] = []
     verbatims['code'] = []
@@ -132,7 +134,7 @@ def svss():
     PUNCTUATIONS = list(string.punctuation)
 
     df = pd.read_sql(
-        "select serial, variable, position, answer from open_brands_uncoded", engine)
+        f'select serial, variable, position, answer from open_brands_uncoded where {s.serial_criteria}', engine)
     verbatims = df.to_dict('list')
     verbatims['func'] = []
     verbatims['code'] = []
@@ -173,7 +175,7 @@ def bigramms():
     
     print('starting bigramms...', end=' ')
     df = pd.read_sql(
-        "select serial, variable, position, answer from open_brands_uncoded", engine)
+        f'select serial, variable, position, answer from open_brands_uncoded where {s.serial_criteria}', engine)
     verbatims = df.to_dict('list')
     verbatims['func'] = []
     verbatims['code'] = []
@@ -213,7 +215,7 @@ def bigramms():
 def repeats():
     print('starting repeats...', end=' ')
     df = pd.read_sql(
-        "select serial, variable, position, answer from open_brands_uncoded", engine)
+        f'select serial, variable, position, answer from open_brands_uncoded where {s.serial_criteria}', engine)
     verbatims = df.to_dict('list')
     verbatims['func'] = []
     verbatims['code'] = []
@@ -263,7 +265,7 @@ def numbers():
     
     print('starting numbers...', end=' ')
     df = pd.read_sql(
-        "select serial, variable, position, answer from open_brands_uncoded", engine)
+        f'select serial, variable, position, answer from open_brands_uncoded where {s.serial_criteria}', engine)
     verbatims = df.to_dict('list')
     verbatims['func'] = []
     verbatims['code'] = []
@@ -295,13 +297,13 @@ def numbers():
 
 def ml_neuronet():
     print('starting ml...', end=' ')
-    with open('neuronet_2018-06-15.pkl', 'rb') as f:
+    with open('neuronet_2018-06-21.pkl', 'rb') as f:
         mlp_nn = pickle.load(f)
 
     PUNCTUATIONS = list(string.punctuation)
 
     df = pd.read_sql(
-        "select serial, variable, position, answer from open_brands_uncoded", engine)
+        f'select serial, variable, position, answer from open_brands_uncoded where {s.serial_criteria}', engine)
     verbatims = df.to_dict('list')
     verbatims['func'] = []
     verbatims['code'] = []
@@ -369,7 +371,7 @@ def ml_neuronet():
 
 def main():
     
-    engine.execute('delete from open_coded')
+    engine.execute(f'delete from open_coded where {s.serial_criteria}')
     tokenize()
     lev()
     svss()
@@ -380,5 +382,6 @@ def main():
 
 
 if __name__ == '__main__':
-    #main()
+    import load_data
+    load_data.read_increment()
     print(timeit(main, number=1))

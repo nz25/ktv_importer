@@ -1,7 +1,13 @@
+# create_output.py
+
+# pylint: disable-msg=w0614
+
+from settings import *
+
 import pandas as pd
 from sqlalchemy import create_engine
 
-engine = create_engine('mssql+pyodbc://AVANUSQL702/dw_04_live?driver=SQL+Server+Native+Client+11.0?trusted_connection=yes')
+engine = create_engine(mssql_connection)
 
 def verbaco_input():
     uncoded = pd.read_sql("select serial, variable, answer from open_uncoded", engine)
@@ -10,7 +16,7 @@ def verbaco_input():
         if "'" in uncoded.loc[(i, 'answer')]:
             uncoded.loc[(i, 'answer')] = uncoded.loc[(i, 'answer')].replace("'", r"\'")
 
-    with open ('verbaco_input.txt', 'w') as f:
+    with open ('verbaco_input.txt', 'w', encoding='utf-16') as f:
         for i in range(len(uncoded)):
             serial = str(uncoded.loc[(i, 'serial')])
             question = str(uncoded.loc[(i, 'variable')])

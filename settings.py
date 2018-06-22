@@ -1,6 +1,13 @@
+from datetime import date
+
 # files paths
-src = r'D:\ktv\KTVONLINE_1806'
-dest = r'D:\ktv\KTVONLINE_1806_IMPORT'
+wave = date.today().strftime('%y%m')
+raw_data_location = f'D:\\ktv\\KTVONLINE_{wave}'
+raw_mdd_path = f'{raw_data_location}.mdd'
+raw_ddf_path = f'{raw_data_location}.ddf'
+processed_data_location = f'{raw_data_location}_IMPORT'
+mdd_path = f'{processed_data_location}.mdd'
+ddf_path = f'{processed_data_location}.ddf'
 
 # weight targets
 initial_weight_targets = {
@@ -13,14 +20,18 @@ initial_weight_targets = {
            'c_13': 4.97, 'c_14': 2.73, 'c_15': 3.48, 'c_16': 2.64}
 }
 
-# connection strings
-mssql_connection = 'mssql+pyodbc://avanusql702/dw_04_live?driver=SQL+Server+Native+Client+11.0?trusted_connection=yes'
-sqlite_connection = '{0}.ddf'.format(dest)
-mroledb_connection = '''
+# database connection strings
+mssql_connection = 'mssql+pyodbc://./dw_04_live?driver=SQL+Server+Native+Client+11.0?trusted_connection=yes'
+sqlite_connection = f'{processed_data_location}.ddf'
+mroledb_connection = f'''
     Provider=mrOleDB.Provider.2;
     Data Source=mrDataFileDsc;
-    Location={0}.ddf;
-    Initial Catalog={0}.mdd;
+    Location={processed_data_location}.ddf;
+    Initial Catalog={processed_data_location}.mdd;
     MR Init MDM Access=1;
-    MR Init Category Names=1;'''.format(dest)
+    MR Init Category Names=1;'''
 
+# shared variables
+category_map = {}
+serial_increment = 0
+serial_criteria = ''

@@ -1,22 +1,15 @@
 # load_data.py
-# pylint: disable-msg=w0614
 
-from settings import *
-from enums import *
+import settings
+from settings import mdd_path, ddf_path, sqlite_connection, \
+    mssql_connection, mroledb_connection
+from enums import openConstants, DataTypeConstants
 from win32com import client
-
 import sqlite3
-import xml.etree.cElementTree as et
 from sqlalchemy import create_engine
 
-from timeit import timeit
-
-mdd_path = dest + '.mdd'
-ddf_path = dest + '.ddf'
-category_map = {}
-
 # sqlite - source db
-sqlite_conn = sqlite3.connect(ddf_path)
+sqlite_conn = sqlite3.connect(sqlite_connection)
 sqlite_cursor = sqlite_conn.cursor()
 
 # ms sql - destination db
@@ -24,21 +17,17 @@ mssql_engine = create_engine(mssql_connection)
 mssql_conn = mssql_engine.connect().connection
 mssql_cursor = mssql_conn.cursor()
 
+ddf = client.Dispatch('ADODB.Connection')
+ddf.ConnectionString = mroledb_connection
+
 def empty_import_tables():
     print('Emptying destination tables...', end=' ')
-    mssql_cursor.execute('delete from import_open')
-    mssql_cursor.execute('delete from import_fc')
-    mssql_cursor.execute('delete from import_funnel')
-    mssql_cursor.execute('delete from import_interviews')
-    mssql_conn.commit()
-    print('OK')
 
-def read_category_map():
-    print('Reading category map...', end=' ')
-    tree = et.parse(mdd_path)
-    map_root = tree.getroot()[0].find('categorymap')
-    global category_map
-    category_map = {int(m.attrib['value']): m.attrib['name'] for m in map_root}
+    mssql_cursor.execute(f'delete from import_open where {settings.serial_criteria}')
+    mssql_cursor.execute(f'delete from import_fc where {settings.serial_criteria}')
+    mssql_cursor.execute(f'delete from import_funnel where {settings.serial_criteria}')
+    mssql_cursor.execute(f'delete from import_interviews where {settings.serial_criteria}')
+    mssql_conn.commit()
     print('OK')
 
 def read_import_interviews():
@@ -65,19 +54,19 @@ def read_import_interviews():
         from L1
         ''')
     for row in result:
-        serial = row[0]
-        fbgrot = category_map[row[1]]
+        serial = row[0] + settings.serial_increment * 1_000_000
+        fbgrot = settings.category_map[row[1]]
         start_time = row[2]
         age = row[3]
-        fa = category_map[row[4]]
-        fb = category_map[row[5]]
-        fc = category_map[row[6]]
-        ff = category_map[row[7]]
-        fg = category_map[row[8]]
-        fha = category_map[row[9]]
-        fhb = category_map.get(row[10], 'na')
-        f12a = category_map[row[11]]
-        f12b = category_map.get(row[12], 'na')
+        fa = settings.category_map[row[4]]
+        fb = settings.category_map[row[5]]
+        fc = settings.category_map[row[6]]
+        ff = settings.category_map[row[7]]
+        fg = settings.category_map[row[8]]
+        fha = settings.category_map[row[9]]
+        fhb = settings.category_map.get(row[10], 'na')
+        f12a = settings.category_map[row[11]]
+        f12b = settings.category_map.get(row[12], 'na')
         weight = row[13]
 
         record = str((serial, fbgrot, start_time, age,
@@ -99,13 +88,13 @@ def read_import_funnel():
         from L1
         ''')
     for row in result:
-        serial = row[0]
+        serial = row[0] + settings.serial_increment * 1000000
         for index, question in enumerate(questions, start=1):
             brands = row[index]
             if brands:
                 for brand_value in brands.split(';'):
                     if brand_value:
-                        brand = category_map.get(int(brand_value))
+                        brand = settings.category_map.get(int(brand_value))
                         record = str((serial, question, brand))
                         records.append(record)
     print('OK')
@@ -132,9 +121,9 @@ def read_import_fc():
         '''.format(table_name))
 
     for row in result:
-        serial = row[0]
-        category = category_map[row[1]]
-        brand = category_map[row[2]]
+        serial = row[0] + settings.serial_increment * 1000000
+        category = settings.category_map[row[1]]
+        brand = settings.category_map[row[2]]
         record = str((serial, category, brand))
         records.append(record)
         
@@ -164,8 +153,8 @@ def read_import_open_old():
             where a.[{0}:X] <> ''
             '''.format(question, table_name))
         for row in result:
-            serial = row[0]
-            question = table[1] + '[{' + category_map[row[1]] + '}].' + table[1][:-1]
+            serial = row[0] + settings.serial_increment * 1000000
+            question = table[1] + '[{' + settings.category_map[row[1]] + '}].' + table[1][:-1]
             answer = row[2].replace("'", "#####")
             record = str((serial, question, answer)).replace("#####", "''")
             records.append(record)
@@ -189,8 +178,7 @@ def read_import_open():
                 mdm_variables.append(v.FullName)
     mdd.Close()
 
-    ddf = client.Dispatch('ADODB.Connection')
-    ddf.ConnectionString = mroledb_connection
+    
     ddf.Open()
     rs, _ = ddf.Execute('select Respondent.Serial, {0} from vdata'.format(','.join(mdm_variables)))
 
@@ -200,12 +188,10 @@ def read_import_open():
         for f in rs.Fields:
             answer = None
             if f.Name == 'Respondent.Serial':
-                serial = f.Value
+                serial = int(f.Value) + settings.serial_increment * 1000000
             else:
                 answer = f.Value
             if answer:
-                if serial == 50:
-                    print(answer)
                 variable = f.Name
                 answer = answer.replace("'", "''")
                 record = '(' + str(serial) + ", '" + variable + "', '" + answer + "')"
@@ -235,8 +221,6 @@ def write_records(records, table_name):
 
 def main():
     empty_import_tables()
-    read_category_map()
-    
     interviews = read_import_interviews()
     funnel = read_import_funnel()
     fc = read_import_fc()
@@ -249,4 +233,8 @@ def main():
     print('Data loading complete', end='\n\n')
 
 if __name__ == '__main__':
-    print(timeit(main, number=1))
+    import initialize
+    import prepare_data
+    initialize.main()
+    prepare_data.main()
+    main()
