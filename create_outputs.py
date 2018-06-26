@@ -19,6 +19,8 @@ def verbaco_input():
     with open ('verbaco_input.txt', 'w', encoding='utf-16') as f:
         for i in range(len(uncoded)):
             serial = str(uncoded.loc[(i, 'serial')])
+            if serial == 41000038:
+                print('ok')
             question = str(uncoded.loc[(i, 'variable')])
             answer = str(uncoded.loc[(i, 'answer')])
             if len(answer) > 3000:
