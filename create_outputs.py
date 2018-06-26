@@ -1,56 +1,43 @@
 # create_output.py
 
-# pylint: disable-msg=w0614
-
-from settings import *
-
-import pandas as pd
+from settings import MSSQL_CONNECTION, DAU_LOCATION
 from sqlalchemy import create_engine
 
-engine = create_engine(mssql_connection)
+mssql_engine = create_engine(MSSQL_CONNECTION)
 
-def verbaco_input():
-    uncoded = pd.read_sql("select serial, variable, answer from open_uncoded", engine)
+def write_dau():
+    print('Writing dau file...', end=' ')
+    records = [row for row in mssql_engine.execute(f'''
+        select serial, variable, answer
+        from open_uncoded
+        order by serial, variable, answer
+        ''').fetchall()]
 
-    for i in range(len(uncoded)):
-        if "'" in uncoded.loc[(i, 'answer')]:
-            uncoded.loc[(i, 'answer')] = uncoded.loc[(i, 'answer')].replace("'", r"\'")
+    with open(DAU_LOCATION, 'w', encoding='utf-16') as f:
+        current_serial = 0
+        for record in records:
+            serial = record[0]
+            variable = record[1]
+            answer = clean_answer(record[2])
+            if serial != current_serial:
+                if current_serial:
+                    f.write(f'##end {current_serial}\n')
+                f.write(f'##recstart {serial}\n')
+                current_serial = serial
+            f.write(f"##v '{variable}'='{answer}'\n")
+        f.write(f'##end {current_serial}\n')
+    print('OK')
 
-    with open ('verbaco_input.txt', 'w', encoding='utf-16') as f:
-        for i in range(len(uncoded)):
-            serial = str(uncoded.loc[(i, 'serial')])
-            if serial == 41000038:
-                print('ok')
-            question = str(uncoded.loc[(i, 'variable')])
-            answer = str(uncoded.loc[(i, 'answer')])
-            if len(answer) > 3000:
-                answer = answer[:3000]
-            if i == 0:
-                start = '##recstart ' + serial  + '\n'
-                f.write(start)
-            else:
-                if uncoded.loc[(i, 'serial')] != uncoded.loc[(i-1, 'serial')]:
-                    end = '##end ' + str(uncoded.loc[(i-1, 'serial')]) + '\n'
-                    start = '##recstart ' + serial  + '\n'
-                    f.write(end)
-                    f.write(start)
-            line = '##v ' +"'" + question + "'='" + answer + "'\n"
-            f.write(line)
-        end = '##end ' + str(uncoded.loc[(i, 'serial')]) + '\n'
-        f.write(end)
-        
-
-def coding():
-    coded = pd.read_sql("select * from open_coded", engine)
-    writer = pd.ExcelWriter('Coded.xlsx', engine='xlsxwriter')
-    coded.to_excel(writer,'Sheet1', index = False)
-
-
-    
+def clean_answer(verbatim):
+    clean = verbatim[:3000]
+    clean = clean.replace('\n', ' ').replace('\r', ' ')
+    clean = clean.replace("'", "\'")
+    return clean
 
 def main():
-    verbaco_input()
-    coding()
+    print('OUTPUTS CREATION')
+    write_dau()
+    print('Output creation complete')
 
 if __name__ == '__main__':
     main()

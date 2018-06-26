@@ -3,8 +3,8 @@
 # pylint: disable-msg=w0614
 
 import settings
-from settings import initial_weight_targets, mssql_connection, \
-    mroledb_connection, mdd_path, ddf_path
+from settings import INITIAL_WEIGHT_TARGETS, MSSQL_CONNECTION, \
+    MROLEDB_CONNECTION, MDD_PATH, DDF_PATH
 from enums import *
 from math import isclose
 from win32com import client
@@ -12,11 +12,11 @@ from sqlalchemy import create_engine
 
 adjusted_weight_targets = {}
 
-mssql_engine = create_engine(mssql_connection)
+mssql_engine = create_engine(MSSQL_CONNECTION)
 
 mdd = client.Dispatch('MDM.Document')
 ddf = client.Dispatch('ADODB.Connection')
-ddf.ConnectionString = mroledb_connection
+ddf.ConnectionString = MROLEDB_CONNECTION
 
 def check_data():
     print('Checking data...', end=' ')
@@ -27,7 +27,7 @@ def check_data():
     brand_lists = set(brand[1] for brand in master_brands)
 
     # get brands/lists from mdd
-    mdd.Open(mdd_path, mode=openConstants.oREAD)
+    mdd.Open(MDD_PATH, mode=openConstants.oREAD)
     mdd_brands = {element.Name: lst for lst in brand_lists for element in mdd.Types(lst)}
     mdd_brands = {}
     for lst in brand_lists:
@@ -40,9 +40,8 @@ def check_data():
     for brand in master_brands:
         master_list, mdm_list = brand['mdm_list'], mdd_brands[brand['mdm_category']]
         if master_list != mdm_list:
-            raise Exception('Change in rotation for brand "{0}" (old: {1}, new: {2})'.format(
-                        brand['mdm_category'], master_list, mdm_list
-                    ))
+            raise Exception(f'''Change in rotation for brand '{brand['mdm_category']}':
+            (old: {master_list}, new: {mdm_list})''')
     
     print('OK')
     
@@ -51,27 +50,27 @@ def clean_data():
     ddf.Open()
 
     # basco checks
-    print('Cleaning data...', end=' ')
+    print('Cleaning incompletes...', end=' ')
     _, rows_affected = ddf.Execute('delete from vdata where not comp.ContainsAny({comp, comp_sc})')
-    print('{0} incompletes removed'.format(rows_affected))
+    print(f'{rows_affected} removed')
 
-    print('Cleaning data...', end=' ')
+    print('Cleaning test interviews...', end=' ')
     _, rows_affected = ddf.Execute('delete from vdata where DataCollection.Status.ContainsAny({Test})')
-    print('{0} test interviews removed'.format(rows_affected))
+    print(f'{rows_affected} removed')
     
-    print('Cleaning data...', end=' ')
+    print('Cleaning sum check interviews...', end=' ')
     _, rows_affected = ddf.Execute('delete from vdata where f5g.AnswerCount() = 0')
-    print('{0} interviews with f5g = 0 removed'.format(rows_affected))
+    print(f'{rows_affected} removed')
     
-    print('Cleaning data...', end=' ')
+    print('Cleaning speedsters...', end=' ')
     _, rows_affected = ddf.Execute('delete from vdata where cdouble(intend-intstart)*60*24 <= 5')
-    print('{0} interviews with interview duration <= 5 minutes removed'.format(rows_affected))
+    print(f'{rows_affected} removed')
  
     ddf.Close()
 
 def get_frequences(var):
     ddf.Open()
-    rs, _ = ddf.Execute('select {0}, count(*) as c from vdata group by {0}'.format(var))
+    rs, _ = ddf.Execute(f'select {var}, count(*) as c from vdata group by {var}')
     temp = {}
     while not rs.EOF:
         k, v = rs.Fields
@@ -84,7 +83,7 @@ def get_frequences(var):
 def adjust_weight_targets(var):
 
     # putting initial weight target in adjusted targets dictionary
-    adjusted_weight_targets[var] = {k: initial_weight_targets[var][k] for k in adjusted_weight_targets[var].keys()}
+    adjusted_weight_targets[var] = {k: INITIAL_WEIGHT_TARGETS[var][k] for k in adjusted_weight_targets[var].keys()}
 
     # normalizing intial weight if sum of all targets is less than 100
     normalization_factor = 100 / sum(adjusted_weight_targets[var].values())
@@ -97,7 +96,7 @@ def adjust_weight_targets(var):
 def add_weight_variable():
     print('Adding weight variable...', end=' ')
 
-    mdd.Open(mdd_path)
+    mdd.Open(MDD_PATH)
     if not mdd.Fields.Exist('weight'):
         wgt_var = mdd.CreateVariable('weight', 'Weight')
         wgt_var.DataType = DataTypeConstants.mtDouble
@@ -114,7 +113,7 @@ def add_weight_variable():
 def weight_data():
     print('Weighting data...', end=' ')
 
-    mdd.Open(mdd_path)
+    mdd.Open(MDD_PATH)
 
     weight_engine = client.Dispatch('mrWeight.WeightEngine')
     weight_engine.Initialize(mdd)
@@ -124,7 +123,7 @@ def weight_data():
         rim = wgt.Rims[k]
         for i in range(rim.RimElements.Count):
             rim_element = rim.RimElements.Item(i)
-            rim_element_category_name = settings.category_map[rim_element.Category[0]]
+            rim_element_category_name = settings.CATEGORY_MAP[rim_element.Category[0]]
             rim_element.Target = adjusted_weight_targets[k].get(rim_element_category_name, 0.0)
 
     wgt.TotalType = wtTotalType.wtUnweightedInput
@@ -140,9 +139,10 @@ def weight_data():
     print('OK')
 
 def main():
+    print('DATA PREPARATION')
     check_data()
     clean_data()
-    for k in initial_weight_targets.keys():
+    for k in INITIAL_WEIGHT_TARGETS.keys():
         print('Checking weight targets for {0}...'.format(k), end =" ")
         get_frequences(k)
         adjust_weight_targets(k)

@@ -1,8 +1,8 @@
 # load_data.py
 
 import settings
-from settings import mdd_path, ddf_path, sqlite_connection, \
-    mssql_connection, mroledb_connection
+from settings import MDD_PATH, DDF_PATH, SQLITE_CONNECTION, \
+    MSSQL_CONNECTION, MROLEDB_CONNECTION
 from enums import openConstants, DataTypeConstants
 from win32com import client
 import sqlite3
@@ -10,24 +10,24 @@ from sqlalchemy import create_engine
 from collections import defaultdict
 
 # sqlite - source db
-sqlite_conn = sqlite3.connect(sqlite_connection)
+sqlite_conn = sqlite3.connect(SQLITE_CONNECTION)
 sqlite_cursor = sqlite_conn.cursor()
 
 # ms sql - destination db
-mssql_engine = create_engine(mssql_connection)
+mssql_engine = create_engine(MSSQL_CONNECTION)
 mssql_conn = mssql_engine.connect().connection
 mssql_cursor = mssql_conn.cursor()
 
 ddf = client.Dispatch('ADODB.Connection')
-ddf.ConnectionString = mroledb_connection
+ddf.ConnectionString = MROLEDB_CONNECTION
 
 def empty_import_tables():
     print('Emptying destination tables...', end=' ')
 
-    mssql_cursor.execute(f'delete from import_open where {settings.serial_criteria}')
-    mssql_cursor.execute(f'delete from import_fc where {settings.serial_criteria}')
-    mssql_cursor.execute(f'delete from import_funnel where {settings.serial_criteria}')
-    mssql_cursor.execute(f'delete from import_interviews where {settings.serial_criteria}')
+    mssql_cursor.execute(f'delete from import_open where {settings.SERIAL_CRITERIA}')
+    mssql_cursor.execute(f'delete from import_fc where {settings.SERIAL_CRITERIA}')
+    mssql_cursor.execute(f'delete from import_funnel where {settings.SERIAL_CRITERIA}')
+    mssql_cursor.execute(f'delete from import_interviews where {settings.SERIAL_CRITERIA}')
     mssql_conn.commit()
     print('OK')
 
@@ -55,27 +55,28 @@ def read_import_interviews():
         from L1
         ''')
     for row in result:
-        serial = row[0] + settings.serial_increment * 1_000_000
-        fbgrot = settings.category_map[row[1]]
+        serial = row[0] + settings.SERIAL_INCREMENT * 1_000_000
+        fbgrot = settings.CATEGORY_MAP[row[1]]
         start_time = row[2]
         age = row[3]
-        fa = settings.category_map[row[4]]
-        fb = settings.category_map[row[5]]
-        fc = settings.category_map[row[6]]
-        ff = settings.category_map[row[7]]
-        fg = settings.category_map[row[8]]
-        fha = settings.category_map[row[9]]
-        fhb = settings.category_map.get(row[10], 'na')
-        f12a = settings.category_map[row[11]]
-        f12b = settings.category_map.get(row[12], 'na')
+        fa = settings.CATEGORY_MAP[row[4]]
+        fb = settings.CATEGORY_MAP[row[5]]
+        fc = settings.CATEGORY_MAP[row[6]]
+        ff = settings.CATEGORY_MAP[row[7]]
+        fg = settings.CATEGORY_MAP[row[8]]
+        fha = settings.CATEGORY_MAP[row[9]]
+        fhb = settings.CATEGORY_MAP.get(row[10], 'na')
+        f12a = settings.CATEGORY_MAP[row[11]]
+        f12b = settings.CATEGORY_MAP.get(row[12], 'na')
         weight = row[13]
 
         record = str((serial, fbgrot, start_time, age,
             fa, fb, fc, ff, fg, fha, fhb,
             f12a, f12b, weight))
         records.append(record)
-    print('OK')
-    return records
+
+    write_records(records, 'import_interviews')
+    print(f'{len(records)} records')
 
 def read_import_funnel():
     print('Reading funnel questions...', end=' ')
@@ -89,17 +90,18 @@ def read_import_funnel():
         from L1
         ''')
     for row in result:
-        serial = row[0] + settings.serial_increment * 1_000_000
+        serial = row[0] + settings.SERIAL_INCREMENT * 1_000_000
         for index, question in enumerate(questions, start=1):
             brands = row[index]
             if brands:
                 for brand_value in brands.split(';'):
                     if brand_value:
-                        brand = settings.category_map.get(int(brand_value))
+                        brand = settings.CATEGORY_MAP.get(int(brand_value))
                         record = str((serial, question, brand))
                         records.append(record)
-    print('OK')
-    return records
+    
+    write_records(records, 'import_funnel')
+    print(f'{len(records)} records')
 
 def read_import_fc():
     print('Reading fc...', end=' ')
@@ -122,14 +124,14 @@ def read_import_fc():
         '''.format(table_name))
 
     for row in result:
-        serial = row[0] + settings.serial_increment * 1_000_000
-        category = settings.category_map[row[1]]
-        brand = settings.category_map[row[2]]
+        serial = row[0] + settings.SERIAL_INCREMENT * 1_000_000
+        category = settings.CATEGORY_MAP[row[1]]
+        brand = settings.CATEGORY_MAP[row[2]]
         record = str((serial, category, brand))
         records.append(record)
         
-    print('OK')
-    return records
+    write_records(records, 'import_fc')
+    print(f'{len(records)} records')
 
 def read_import_open_vdata():
     print('Reading open questions...', end=' ')
@@ -140,7 +142,7 @@ def read_import_open_vdata():
     # reading all text variables from mdd
     mdm_variables = []
     mdd = client.Dispatch('MDM.Document')
-    mdd.Open(mdd_path,mode=openConstants.oREAD)
+    mdd.Open(MDD_PATH,mode=openConstants.oREAD)
     for v in mdd.Variables:
         if v.DataType == DataTypeConstants.mtText and not v.IsSystemVariable and v.HasCaseData:
             if not v.FullName in ignored_variables:
@@ -156,7 +158,7 @@ def read_import_open_vdata():
         for f in rs.Fields:
             answer = None
             if f.Name == 'Respondent.Serial':
-                serial = int(f.Value) + settings.serial_increment * 1_000_000
+                serial = int(f.Value) + settings.SERIAL_INCREMENT * 1_000_000
             else:
                 answer = f.Value
             if answer:
@@ -167,9 +169,9 @@ def read_import_open_vdata():
         rs.MoveNext()
 
     ddf.Close()
-        
-    print('OK')
-    return records
+       
+    write_records(records, 'import_open')
+    print(f'{len(records)} records')
 
 def read_import_open():
     print('Reading open questions...', end = ' ')
@@ -193,7 +195,7 @@ def read_import_open():
     # reading all text variables from mdd and builds flat list (VDATA) of variables
     flat_variables = []
     mdd = client.Dispatch('MDM.Document')
-    mdd.Open(mdd_path,mode=openConstants.oREAD)
+    mdd.Open(MDD_PATH,mode=openConstants.oREAD)
     for v in mdd.Variables:
         if v.DataType == DataTypeConstants.mtText and not v.IsSystemVariable \
         and v.HasCaseData and v.FullName not in ignored_variables:
@@ -255,12 +257,12 @@ def read_import_open():
         
         #builds and executes sql
         for row in sqlite_cursor.execute(f'''select {','.join(query_columns)} from {t}'''):
-            serial = row[0] + settings.serial_increment * 1_000_000
+            serial = row[0] + settings.SERIAL_INCREMENT * 1_000_000
             variable_prefix = ''
             for i in range(1, len(level_tables)):
                 field = levels[level_tables[i]][0]
                 iteration_value = relevant_tables[level_tables[i]][row[:i + 1]]
-                iteration_category = settings.category_map[iteration_value]
+                iteration_category = settings.CATEGORY_MAP[iteration_value]
                 variable_prefix += f'{field}[{{{iteration_category}}}].'
             for i in range(len(text_columns)):    
                 offset = i + len(id_columns)
@@ -270,36 +272,32 @@ def read_import_open():
                     answer = answer.replace("'", "''")
                     record = '(' + str(serial) + ", '" + variable + "', '" + answer + "')"
                     records.append(record)
-    print('OK')
-    return records
-   
+       
+    write_records(records, 'import_open')
+    print(f'{len(records)} records')
+    
 def chunker(seq, size):
     return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
 def write_records(records, table_name):
-    print('Inserting into {0}...'.format(table_name), end=' ')
-    insert_header = '''
-        insert into {0}
-        values 
-    '''.format(table_name)
+    insert_header = f'''
+        insert into {table_name}
+        values
+        '''
     for batch in chunker(records, 1000):
         insert_values = ','.join(batch)
         insert_statement = insert_header + insert_values
         mssql_cursor.execute(insert_statement)
         mssql_conn.commit()
-    print('OK')
 
 def main():
+    print('DATA LOADING')
     empty_import_tables()
-    interviews = read_import_interviews()
-    funnel = read_import_funnel()
-    fc = read_import_fc()
-    opens = read_import_open()
+    read_import_interviews()
+    read_import_funnel()
+    read_import_fc()
+    read_import_open()
 
-    write_records(interviews, 'import_interviews')
-    write_records(funnel, 'import_funnel')
-    write_records(fc, 'import_fc')
-    write_records(opens, 'import_open')
     print('Data loading complete', end='\n\n')
 
 if __name__ == '__main__':

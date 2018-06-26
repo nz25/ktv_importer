@@ -3,7 +3,9 @@
 # pylint: disable-msg=e1101
 
 import settings
-from settings import mssql_connection, LEVENSHTEIN_CUTOFF
+from settings import MSSQL_CONNECTION, LEVENSHTEIN_CUTOFF, \
+    BIGRAMMS, REGEX_CRITERIA, NEURONET_PICKLE
+from load_data import write_records, chunker
 
 from string import punctuation
 import pickle
@@ -15,7 +17,7 @@ import Levenshtein as lv
 from CharVectorizer import CharVectorizer
 from timeit import timeit
 
-mssql_engine = create_engine(mssql_connection)
+mssql_engine = create_engine(MSSQL_CONNECTION)
 mssql_conn = mssql_engine.connect().connection
 mssql_cursor = mssql_conn.cursor()
 
@@ -29,6 +31,9 @@ clean_library = {}
 def clean_verbatim(verbatim):
     return ''.join(c for c in verbatim.lower().strip() if c not in punctuation)
 
+def clean_for_neuronet(verbatim):
+    return clean_verbatim(verbatim)[:100]
+
 def load_library():
     print('Loading library...', end=' ')
     global original_library, clean_library
@@ -40,30 +45,30 @@ def load_library():
 def empty_open_tables():
 
     print('Emptying open tables...', end=' ')
-    mssql_engine.execute(f'delete from open_tokenized where {settings.serial_criteria}')
-    mssql_engine.execute(f'delete from open_coded where {settings.serial_criteria}')
+    mssql_engine.execute(f'delete from open_tokenized where {settings.SERIAL_CRITERIA}')
+    mssql_engine.execute(f'delete from open_coded where {settings.SERIAL_CRITERIA}')
     print('OK')
 
 def tokenize_answers():
     
     print('Tokenizing answers...', end=' ')
+    records = []
     for serial, variable, answer in mssql_engine.execute(f'''
         select o.serial, o.variable, o.answer
         from import_open as o
             join open_variables as v
                 on o.variable = v.variable
-        where {settings.serial_criteria}
+        where {settings.SERIAL_CRITERIA}
             and o.answer like '%' + char(10) + '%'
             and v.type = 'brand'
         ''').fetchall():
         tokenized_answers = answer.split('\n')
         for index, tokenized_answer in enumerate(tokenized_answers):
             if tokenized_answer:
-                mssql_engine.execute(f'''
-                    insert into open_tokenized
-                    values({serial}, '{variable}', {index}, char(10), '{tokenized_answer.replace("'", "''")}')
-                    ''')
-    print('OK')
+                record = f'''({serial}, '{variable}', {index}, char(10), '{tokenized_answer}')'''
+                records.append(record)
+    write_records(records, 'open_tokenized')
+    print(f'{len(records)} records')
 
 def lookup(func, func_name, library):
 
@@ -72,14 +77,14 @@ def lookup(func, func_name, library):
     for serial, variable, position, answer in mssql_engine.execute(f'''
         select serial, variable, position, answer
         from open_brands_uncoded
-        where {settings.serial_criteria}
+        where {settings.SERIAL_CRITERIA}
         ''').fetchall():
         clean_answer = func(answer)
         if clean_answer in library:
             record = f'''({serial}, '{variable}', {position}, '{answer}', '{func_name}', {library[clean_answer]}, 1, '{clean_answer}')'''
             records.append(record)
     write_records(records, 'open_coded')
-    print('OK')
+    print(f'{len(records)} records')
 
 def lev():
 
@@ -88,7 +93,7 @@ def lev():
     for serial, variable, position, answer in mssql_engine.execute(f'''
         select serial, variable, position, answer
         from open_brands_uncoded
-        where {settings.serial_criteria}
+        where {settings.SERIAL_CRITERIA}
         ''').fetchall():
         clean_answer = clean_verbatim(answer)
         max_score, code, candidate = 0.0, 0, ''
@@ -101,7 +106,7 @@ def lev():
             records.append(record)
 
     write_records(records, 'open_coded')
-    print('OK')
+    print(f'{len(records)} records')
 
 def svss():
     print(f'Coding using svss...', end=' ')
@@ -111,7 +116,7 @@ def svss():
     for serial, variable, position, answer in mssql_engine.execute(f'''
         select serial, variable, position, answer
         from open_brands_uncoded
-        where {settings.serial_criteria}
+        where {settings.SERIAL_CRITERIA}
         ''').fetchall():
         clean_answer = clean_verbatim(answer)
         if clean_answer in delete:
@@ -122,130 +127,83 @@ def svss():
             records.append(record)
 
     write_records(records, 'open_coded')
-    print('OK')
+    print(f'{len(records)} records')
 
 def bigramms():
-    
-    print('starting bigramms...', end=' ')
-    df = pd.read_sql(
-        f'select serial, variable, position, answer from open_brands_uncoded where {settings.serial_criteria}', mssql_engine)
-    verbatims = df.to_dict('list')
-    verbatims['func'] = []
-    verbatims['code'] = []
-    verbatims['score'] = []
-    verbatims['candidate'] = []
 
-    bigramms = ['bc', 'bf', 'bj', 'bx', 'cb', 'cf', 'cg', 'cj', 'cq', 'cv', 'cx', 'cy', 'dq', 'dx', 'fc', 'fj', 'fq', 'fx', 'fy', 'gc', 'gq', 'gx', 'gy', 'hx', 'jb', 'jc', 'jd', 'jg', 'jh', 'ji', 'jj', 'jk', 'jl', 'jm', 'jn', 'jp', 'jq', 'jr', 'js', 'jt', 'jv', 'jw', 'jx', 'jy', 'jz', 'kj', 'kx', 'lq', 'mq', 'mx', 'nx', 'oq', 'pj', 'px', 'qa', 'qb', 'qc', 'qd', 'qe', 'qf', 'qg', 'qh', 'qj', 'qk', 'qm', 'qp', 'qq', 'qr', 'qs', 'qt', 'qv', 'qw', 'qx', 'qy', 'qz', 'rq', 'rx', 'sq', 'sx', 'tx', 'uj', 'uy', 'vb', 'vc', 'vf', 'vg', 'vj', 'vn', 'vq', 'vx', 'vy', 'wq', 'wx', 'wy', 'wz', 'xb', 'xc', 'xd', 'xf', 'xg', 'xh', 'xj', 'xk', 'xl', 'xm', 'xn', 'xq', 'xr', 'xs', 'xv', 'xw', 'xy', 'xz', 'yf', 'yg', 'yh', 'yi', 'yj', 'yk', 'yq', 'yt', 'yu', 'yv', 'yx', 'yy', 'yz', 'zf', 'zh', 'zj', 'zr', 'zx', 'zy', 'aj', 'bd', 'bh', 'bn', 'by', 'dj', 'eq', 'fh', 'fk', 'fp', 'fv', 'fw', 'gj', 'hc', 'hj', 'ij', 'kg', 'kh', 'km', 'kn', 'kz', 'lj', 'oj', 'uu', 'uz', 'wj', 'ws', 'xt', 'ys', 'zd', 'zg', 'zm', 'zz', 'cd', 'dh', 'fb', 'fn', 'gf', 'hf', 'jo', 'kd', 'lh', 'mj', 'sj', 'tj', 'ui', 'uw', 'aw', 'bg', 'df', 'dz', 'ej', 'fg', 'gb', 'gg', 'gh', 'gw', 'gz', 'hh', 'hk', 'hz', 'iu', 'pd']
-
-    for i in range(len(verbatims['answer'])):
+    print(f'Coding using bigramms...', end=' ')
+    records = []
+    for serial, variable, position, answer in mssql_engine.execute(f'''
+        select serial, variable, position, answer
+        from open_brands_uncoded
+        where {settings.SERIAL_CRITERIA}
+        ''').fetchall():
+        clean_answer = clean_verbatim(answer)
         count = 0
         found_bi = []
-        for bi in bigramms:
-            if bi in verbatims['answer'][i]:
-                freq = verbatims['answer'][i].count(bi)
+        for bi in BIGRAMMS:
+            if bi in clean_answer:
+                freq = clean_answer.count(bi) 
                 count += freq
                 found_bi.append(bi)
         if count >= 3:
-            candi = ', '.join(found_bi)
-            verbatims['func'].append('bigr')
-            verbatims['code'].append(0)
-            verbatims['score'].append(1)
-            verbatims['candidate'].append(candi)
+            record = f'''({serial}, '{variable}', {position}, '{answer}', 'bigramms', 0, 1, '{','.join(found_bi)}')'''
+            records.append(record)            
 
-        else:
-            verbatims['func'].append('nan')
-            verbatims['code'].append('')
-            verbatims['score'].append('')
-            verbatims['candidate'].append('')
+    write_records(records, 'open_coded')
+    print(f'{len(records)} records')
 
-    df_autocoding = pd.DataFrame.from_dict(OrderedDict(verbatims))
-    df_coded = df_autocoding[df_autocoding.func != 'nan']
-
-    df_coded.to_sql('open_coded', mssql_engine, index=False, if_exists='append')
-
-    print('OK')
 
 def repeats():
-    print('starting repeats...', end=' ')
-    df = pd.read_sql(
-        f'select serial, variable, position, answer from open_brands_uncoded where {settings.serial_criteria}', mssql_engine)
-    verbatims = df.to_dict('list')
-    verbatims['func'] = []
-    verbatims['code'] = []
-    verbatims['score'] = []
-    verbatims['candidate'] = []
 
-    n = 2
+    print(f'Coding using repeats...', end=' ')
+    records = []
+    for serial, variable, position, answer in mssql_engine.execute(f'''
+        select serial, variable, position, answer
+        from open_brands_uncoded
+        where {settings.SERIAL_CRITERIA}
+        ''').fetchall():
+        clean_answer = clean_verbatim(answer)
+        is_found = False
+        for chunk in range(3, 0, -1):
+            parsed = [clean_answer[i:i+chunk] for i in range(0, len(clean_answer), chunk)]
+            if len(parsed) > 2:
+                for i in range(len(parsed) - 2):
+                    if parsed[i] == parsed[i+1] == parsed[i+2]:
+                        is_found = True
+                        found_pattern = parsed[i]
+                        break
+                else:
+                    continue
+                break
+        if is_found:
+            record = f'''({serial}, '{variable}', {position}, '{answer}', 'repeats', 0, 1, '{found_pattern}')'''
+            records.append(record) 
 
-    for i in range(len(verbatims['answer'])):
-        parsed = [verbatims['answer'][i][j:j+n] for j in range(0, len(verbatims['answer'][i]), n)]
-        temp = 0
-        for j in range(len(parsed)-3):
-            if parsed[j] == parsed[j+1] and parsed[j+1] == parsed[j+2] and parsed[j+2] == parsed[j+3]:
-                found = parsed[j]
-                temp = 1
-        if temp == 1:
-            verbatims['func'].append('rep')
-            verbatims['code'].append(0)
-            verbatims['score'].append(1)
-            verbatims['candidate'].append(found)
-            temp = 1
-        else:
-            verbatims['func'].append('nan')
-            verbatims['code'].append('')
-            verbatims['score'].append('')
-            verbatims['candidate'].append('')
+    write_records(records, 'open_coded')
+    print(f'{len(records)} records')
 
-    for i in range(len(verbatims['answer'])):
-        parsed = list(verbatims['answer'][i])
-        for j in range(len(parsed)-3):
-            if parsed[j] == parsed[j+1] and parsed[j+1] == parsed[j+2] and parsed[j+2] == parsed[j+3]:
-                verbatims['func'][i] = 'rep'
-                verbatims['code'][i] = 0
-                verbatims['score'][i] = 1
-                verbatims['candidate'][i] = parsed[j]
-
-
-
-    df_autocoding = pd.DataFrame.from_dict(OrderedDict(verbatims))
-    df_coded = df_autocoding[df_autocoding.func != 'nan']
-
-    df_coded.to_sql('open_coded', mssql_engine, index=False, if_exists='append')
-
-    print('OK')
 
 def numbers():
-    
-    print('starting numbers...', end=' ')
-    df = pd.read_sql(
-        f'select serial, variable, position, answer from open_brands_uncoded where {settings.serial_criteria}', mssql_engine)
-    verbatims = df.to_dict('list')
-    verbatims['func'] = []
-    verbatims['code'] = []
-    verbatims['score'] = []
-    verbatims['candidate'] = []
 
-    for i in range(len(verbatims['answer'])):
-        if bool(re.findall(r'[\d]+[a-zA-ZöüäÖÜÄ]+[\d]+', verbatims['answer'][i])):
-            found = re.findall(r'[\d]+[a-zA-ZöüäÖÜÄ]+[\d]', verbatims['answer'][i])
-            candi = ', '.join(found)
-            verbatims['func'].append('num')
-            verbatims['code'].append(0)
-            verbatims['score'].append(1)
-            verbatims['candidate'].append(candi)
+    print(f'Coding using numbers...', end=' ')
+    records = []
+    for serial, variable, position, answer in mssql_engine.execute(f'''
+        select serial, variable, position, answer
+        from open_brands_uncoded
+        where {settings.SERIAL_CRITERIA}
+        ''').fetchall():
+        clean_answer = clean_verbatim(answer)
+        found = re.findall(REGEX_CRITERIA, clean_answer)
 
-        else:
-            verbatims['func'].append('nan')
-            verbatims['code'].append('')
-            verbatims['score'].append('')
-            verbatims['candidate'].append('')
+        if found:            
+            candidate = ','.join(found)
+            record = f'''({serial}, '{variable}', {position}, '{answer}', 'num', 0, 1, '{candidate}')'''
+            records.append(record) 
 
-    df_autocoding = pd.DataFrame.from_dict(OrderedDict(verbatims))
-    df_coded = df_autocoding[df_autocoding.func != 'nan']
+    write_records(records, 'open_coded')
+    print(f'{len(records)} records')
 
-    df_coded.to_sql('open_coded', mssql_engine, index=False, if_exists='append')
-
-    print('OK')
 
 def ml_neuronet():
     print('starting ml...', end=' ')
@@ -255,7 +213,7 @@ def ml_neuronet():
     PUNCTUATIONS = list(punctuation)
 
     df = pd.read_sql(
-        f'select serial, variable, position, answer from open_brands_uncoded where {settings.serial_criteria}', mssql_engine)
+        f'select serial, variable, position, answer from open_brands_uncoded where {settings.SERIAL_CRITERIA}', mssql_engine)
     verbatims = df.to_dict('list')
     verbatims['func'] = []
     verbatims['code'] = []
@@ -321,21 +279,8 @@ def ml_neuronet():
 
     print('OK')
 
-def chunker(seq, size):
-    return (seq[pos:pos + size] for pos in range(0, len(seq), size))
-
-def write_records(records, table_name):
-    insert_header = '''
-        insert into {0}
-        values 
-    '''.format(table_name)
-    for batch in chunker(records, 1000):
-        insert_values = ','.join(batch)
-        insert_statement = insert_header + insert_values
-        mssql_cursor.execute(insert_statement)
-        mssql_conn.commit()
-
 def main():
+    print('PROCESSING OPEN')
     load_library()
     empty_open_tables()
     tokenize_answers()
@@ -348,7 +293,6 @@ def main():
     numbers()
     ml_neuronet()
     print('Processing opens complete\n\n')
-
 
 if __name__ == '__main__':
 
