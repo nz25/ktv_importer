@@ -148,7 +148,7 @@ def main():
         adjust_weight_targets(k)
     add_weight_variable()
     weight_data()
-    print('Data preparation complete\n')
+    print('Data preparation complete', end='\n\n')
 
 if __name__ == '__main__':
     import initialize

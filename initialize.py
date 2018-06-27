@@ -49,7 +49,7 @@ def main():
         backup()
         read_increment()
         read_category_map()
-        print('Initialization complete\n')
+        print('Initialization complete', end='\n\n')
     else:
         directory, file_name = path.split(RAW_MDD_PATH)
         raise FileNotFoundError(f'Source file {file_name} not found in {directory}')

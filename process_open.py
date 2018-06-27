@@ -4,7 +4,7 @@
 
 import settings
 from settings import MSSQL_CONNECTION, LEVENSHTEIN_CUTOFF, \
-    BIGRAMMS, REGEX_CRITERIA, NEURONET_PICKLE
+    BIGRAMMS, REGEX_CRITERIA, NEURONET_PATH, NEURONET_CUTOFF
 from load_data import write_records, chunker
 
 from string import punctuation
@@ -15,7 +15,6 @@ from collections import OrderedDict
 from sqlalchemy import create_engine
 import Levenshtein as lv
 from CharVectorizer import CharVectorizer
-from timeit import timeit
 
 mssql_engine = create_engine(MSSQL_CONNECTION)
 mssql_conn = mssql_engine.connect().connection
@@ -29,10 +28,7 @@ original_library = {}
 clean_library = {}
 
 def clean_verbatim(verbatim):
-    return ''.join(c for c in verbatim.lower().strip() if c not in punctuation)
-
-def clean_for_neuronet(verbatim):
-    return clean_verbatim(verbatim)[:100]
+    return ''.join(c for c in verbatim.lower() if c not in punctuation)
 
 def load_library():
     print('Loading library...', end=' ')
@@ -79,7 +75,7 @@ def lookup(func, func_name, library):
         from open_brands_uncoded
         where {settings.SERIAL_CRITERIA}
         ''').fetchall():
-        clean_answer = func(answer)
+        clean_answer = func(answer).strip()
         if clean_answer in library:
             record = f'''({serial}, '{variable}', {position}, '{answer}', '{func_name}', {library[clean_answer]}, 1, '{clean_answer}')'''
             records.append(record)
@@ -206,78 +202,33 @@ def numbers():
 
 
 def ml_neuronet():
-    print('starting ml...', end=' ')
-    with open('neuronet_2018-06-21.pkl', 'rb') as f:
+    print('coding using ml...', end=' ')
+    with open(NEURONET_PATH, 'rb') as f:
         mlp_nn = pickle.load(f)
-
-    PUNCTUATIONS = list(punctuation)
-
-    df = pd.read_sql(
-        f'select serial, variable, position, answer from open_brands_uncoded where {settings.SERIAL_CRITERIA}', mssql_engine)
-    verbatims = df.to_dict('list')
-    verbatims['func'] = []
-    verbatims['code'] = []
-    verbatims['score'] = []
-    verbatims['candidate'] = []
-
-    # Bereinigen der neuen Verbatims
-    verbatims_clean = []
-    for i in range(len(verbatims['answer'])):
-        raw = verbatims['answer'][i].lower()
-        for p in PUNCTUATIONS:
-            raw = raw.replace(p, "")
-        if len(raw) > 100:
-            raw = raw[:100]
-        verbatims_clean.append(raw)
-
-    temp_input = pd.Series(data=verbatims_clean, name='Input')
-
-    # 2. Daten in Format für AI-Algorithmus bringen
     vectorizer = CharVectorizer(
         "abcdefghijklmnopqrstuvwxyzßäöü1234567890", fill_left_char=">", fill_right_char="<")
-    # Diese Länge ist fix, da damit der AI-Algorithmus trainiert wurde
+
     target_length_in = 100
 
-    matrix_in = vectorizer.transform(verbatims_clean, target_length_in)
+    records = []
+    for serial, variable, position, answer in mssql_engine.execute(f'''
+        select serial, variable, position, answer
+        from open_brands_uncoded
+        where {settings.SERIAL_CRITERIA}
+        ''').fetchall():
+        clean_answer = clean_verbatim(answer)[:100]
+        data_in = vectorizer.transform([clean_answer], target_length_in)
+        X = pd.DataFrame(data=data_in)
+        probability = mlp_nn.predict_proba(X)
+        max_prob = probability.max(axis = 1)[0]
+        if max_prob >= NEURONET_CUTOFF:            
+            prediction = mlp_nn.predict(X)[0]
+            record = f'''({serial}, '{variable}', {position}, '{answer}', 'ml', {prediction}, {max_prob}, '')'''
+            records.append(record)
+        
+    write_records(records, 'open_coded')
+    print(f'{len(records)} records')
 
-    chars = "abcdefghijklmnopqrstuvwxyzßäöü1234567890?><"
-    columns_in = []
-    for j in range(target_length_in):
-        for i in chars:
-            a = 'in_'+str(i)+str(j+1)
-            columns_in.append(a)
-
-    data_in = pd.DataFrame(data=matrix_in, columns=columns_in)
-
-    X = data_in
-
-    # 3. Schätzung
-    pred_list = []
-
-    probability = mlp_nn.predict_proba(X)
-    proba = pd.DataFrame(data=probability)
-    df_p = proba.max(axis=1)
-
-    prediction = mlp_nn.predict(X)
-    pred = pd.Series(data=prediction)
-
-    df_pred = pd.concat([temp_input, df_p, pred], axis=1)
-
-    pred_list = df_pred.values.tolist()
-
-    for i in range(len(verbatims['answer'])):
-        verbatims['func'].append('ml')
-        verbatims['score'].append(pred_list[i][1])
-        verbatims['code'].append(pred_list[i][2])
-        verbatims['candidate'].append(verbatims_clean[i])
-
-    df_autocoding = pd.DataFrame.from_dict(OrderedDict(verbatims))
-    df_coded = df_autocoding[(df_autocoding['score'] >= 0.97) & (
-        df_autocoding['answer'].str.contains(r'\\n') == False)]
-
-    df_coded.to_sql('open_coded', mssql_engine, index=False, if_exists='append')
-
-    print('OK')
 
 def main():
     print('PROCESSING OPEN')
@@ -292,10 +243,11 @@ def main():
     repeats()
     numbers()
     ml_neuronet()
-    print('Processing opens complete\n\n')
+    print('Processing opens complete', end='\n\n')
 
 if __name__ == '__main__':
-
+    
+    from timeit import timeit
     import initialize
     initialize.main()
     print(timeit(main, number=1))

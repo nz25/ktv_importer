@@ -21,7 +21,7 @@ INITIAL_WEIGHT_TARGETS = {
 }
 
 # database connection strings
-MSSQL_CONNECTION = 'mssql+pyodbc://./dw_04_live?driver=SQL+Server+Native+Client+11.0?trusted_connection=yes'
+MSSQL_CONNECTION = 'mssql+pyodbc://avanusql702/dw_04_live?driver=SQL+Server+Native+Client+11.0?trusted_connection=yes'
 SQLITE_CONNECTION = f'{PROCESSED_DATA_LOCATION}.ddf'
 MROLEDB_CONNECTION = f'''
     Provider=mrOleDB.Provider.2;
@@ -38,9 +38,9 @@ SERIAL_CRITERIA = ''
 
 # open_ends
 LEVENSHTEIN_CUTOFF = 0.95
-BIGRAMMS = ['bc', 'bf', 'bj', 'bx', 'cb', 'cf', 'cg', 'cj', 'cq', 'cv', 'cx', 'cy', 'dq', 'dx', 'fc', 'fj', 'fq', 'fx', 'fy', 'gc', 'gq', 'gx', 'gy', 'hx', 'jb', 'jc', 'jd', 'jg', 'jh', 'ji', 'jj', 'jk', 'jl', 'jm', 'jn', 'jp', 'jq', 'jr', 'js', 'jt', 'jv', 'jw', 'jx', 'jy', 'jz', 'kj', 'kx', 'lq', 'mq', 'mx', 'nx', 'oq', 'pj', 'px', 'qa', 'qb', 'qc', 'qd', 'qe', 'qf', 'qg', 'qh', 'qj', 'qk', 'qm', 'qp', 'qq', 'qr', 'qs', 'qt', 'qv', 'qw', 'qx', 'qy', 'qz', 'rq', 'rx', 'sq', 'sx', 'tx', 'uj', 'uy', 'vb', 'vc', 'vf', 'vg', 'vj', 'vn', 'vq', 'vx', 'vy', 'wq', 'wx', 'wy', 'wz', 'xb', 'xc', 'xd', 'xf', 'xg', 'xh', 'xj', 'xk', 'xl', 'xm', 'xn', 'xq', 'xr', 'xs', 'xv', 'xw', 'xy', 'xz', 'yf', 'yg', 'yh', 'yi', 'yj', 'yk', 'yq', 'yt', 'yu', 'yv', 'yx', 'yy', 'yz', 'zf', 'zh', 'zj', 'zr', 'zx', 'zy', 'aj', 'bd', 'bh', 'bn', 'by', 'dj', 'eq', 'fh', 'fk', 'fp', 'fv', 'fw', 'gj', 'hc', 'hj', 'ij', 'kg', 'kh', 'km', 'kn', 'kz', 'lj', 'oj', 'uu', 'uz', 'wj', 'ws', 'xt', 'ys', 'zd', 'zg', 'zm', 'zz', 'cd', 'dh', 'fb', 'fn', 'gf', 'hf', 'jo', 'kd', 'lh', 'mj', 'sj', 'tj', 'ui', 'uw', 'aw', 'bg', 'df', 'dz', 'ej', 'fg', 'gb', 'gg', 'gh', 'gw', 'gz', 'hh', 'hk', 'hz', 'iu', 'pd']
+BIGRAMMS = ['bc','bf','bj','bx','cb','cf','cg','cj','cq','cv','cx','cy','dq','dx','fc','fj','fq','fx','fy','gc','gq','gx','gy','hx','jb','jc','jd','jg','jh','ji','jj','jk','jl','jm','jn','jp','jq','jr','js','jt','jv','jw','jx','jy','jz','kj','kx','lq','mq','mx','nx','oq','pj','px','qa','qb','qc','qd','qe','qf','qg','qh','qj','qk','qm','qp','qq','qr','qs','qt','qv','qw','qx','qy','qz','rq','rx','sq','sx','tx','uj','uy','vb','vc','vf','vg','vj','vn','vq','vx','vy','wq','wx','wy','wz','xb','xc','xd','xf','xg','xh','xj','xk','xl','xm','xn','xq','xr','xs','xv','xw','xy','xz','yf','yg','yh','yi','yj','yk','yq','yt','yu','yv','yx','yy','yz','zf','zh','zj','zr','zx','zy','aj','bd','bh','bn','by','dj','eq','fh','fk','fp','fv','fw','gj','hc','hj','ij','kg','kh','km','kn','kz','lj','oj','uu','uz','wj','ws','xt','ys','zd','zg','zm','zz','cd','dh','fb','fn','gf','hf','jo','kd','lh','mj','sj','tj','ui','uw','aw','bg','df','dz','ej','fg','gb','gg','gh','gw','gz','hh','hk','hz','iu','pd']
 REGEX_CRITERIA = r'[\d]+[a-zA-ZöüäÖÜÄ]+[\d]'
-NEURONET_PICKLE = 'neuronet_2018-06-21.pkl'
+NEURONET_PATH = 'neuronet_2018-06-21.pkl'
 NEURONET_CUTOFF = 0.97
 
 # outputs

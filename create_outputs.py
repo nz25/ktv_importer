@@ -1,4 +1,4 @@
-# create_output.py
+# create_outputs.py
 
 from settings import MSSQL_CONNECTION, DAU_LOCATION
 from sqlalchemy import create_engine
@@ -25,24 +25,19 @@ def write_dau():
                 f.write(f'##recstart {serial}\n')
                 current_serial = serial
             f.write(f"##v '{variable}'='{answer}'\n")
-        f.write(f'##end {current_serial}\n')
+        f.write(f'##end {current_serial}')
     print('OK')
 
 def clean_answer(verbatim):
     clean = verbatim[:3000]
     clean = clean.replace('\n', ' ').replace('\r', ' ')
-    clean = clean.replace("'", "\'")
+    clean = clean.replace("'", r"\'")
     return clean
 
 def main():
     print('OUTPUTS CREATION')
     write_dau()
-    print('Output creation complete')
+    print('Output creation complete', end='\n\n')
 
 if __name__ == '__main__':
     main()
-
-
-
-
-    
