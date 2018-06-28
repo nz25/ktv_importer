@@ -242,7 +242,7 @@ def main():
     bigramms()
     repeats()
     numbers()
-    ml_neuronet()
+    #ml_neuronet()
     print('Processing opens complete', end='\n\n')
 
 if __name__ == '__main__':

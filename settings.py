@@ -21,7 +21,7 @@ INITIAL_WEIGHT_TARGETS = {
 }
 
 # database connection strings
-MSSQL_CONNECTION = 'mssql+pyodbc://avanusql702/dw_04_live?driver=SQL+Server+Native+Client+11.0?trusted_connection=yes'
+MSSQL_CONNECTION = 'mssql+pyodbc://./dw_04_live?driver=SQL+Server+Native+Client+11.0?trusted_connection=yes'
 SQLITE_CONNECTION = f'{PROCESSED_DATA_LOCATION}.ddf'
 MROLEDB_CONNECTION = f'''
     Provider=mrOleDB.Provider.2;

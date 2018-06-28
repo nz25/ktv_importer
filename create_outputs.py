@@ -7,18 +7,15 @@ mssql_engine = create_engine(MSSQL_CONNECTION)
 
 def write_dau():
     print('Writing dau file...', end=' ')
-    records = [row for row in mssql_engine.execute(f'''
-        select serial, variable, answer
-        from open_uncoded
-        order by serial, variable, answer
-        ''').fetchall()]
 
     with open(DAU_LOCATION, 'w', encoding='utf-16') as f:
         current_serial = 0
-        for record in records:
-            serial = record[0]
-            variable = record[1]
-            answer = clean_answer(record[2])
+        for serial, variable, answer in mssql_engine.execute(f'''
+            select serial, variable, answer
+            from open_uncoded
+            order by serial, variable, answer
+            ''').fetchall():
+            answer = clean_answer(answer)
             if serial != current_serial:
                 if current_serial:
                     f.write(f'##end {current_serial}\n')

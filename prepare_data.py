@@ -143,7 +143,7 @@ def main():
     check_data()
     clean_data()
     for k in INITIAL_WEIGHT_TARGETS.keys():
-        print('Checking weight targets for {0}...'.format(k), end =" ")
+        print(f'Checking weight targets for {k}...', end =" ")
         get_frequences(k)
         adjust_weight_targets(k)
     add_weight_variable()
