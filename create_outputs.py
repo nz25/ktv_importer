@@ -21,7 +21,7 @@ def write_dau():
                     f.write(f'##end {current_serial}\n')
                 f.write(f'##recstart {serial}\n')
                 current_serial = serial
-            f.write(f"##v '{variable}'='{answer}'\n")
+            f.write(f"##v '{variable}' = '{answer}'\n")
         f.write(f'##end {current_serial}')
     print('OK')
 
