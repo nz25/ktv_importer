@@ -57,7 +57,9 @@ def read_import_interviews():
     for row in result:
         serial = row[0] + settings.SERIAL_INCREMENT * 1_000_000
         fbgrot = settings.CATEGORY_MAP[row[1]]
-        start_time = row[2]
+        # compensates for difference between dimensions float->datetime and
+        # sql server float->datetime conversions (difference is 2 days after February 1900)
+        start_time = row[2] - 2
         age = row[3]
         fa = settings.CATEGORY_MAP[row[4]]
         fb = settings.CATEGORY_MAP[row[5]]
@@ -188,17 +190,18 @@ def read_import_open():
             parent_tables.append(parent_table)
     levels = {k: [v[0], v[1][:-1]] for k, v in levels.items()}
 
-    # reading ignored variables from db
-    ignored_variables = set(v[0] for v in mssql_engine.execute('''select variable
-        from open_variables where type = ?''', 'ignored').fetchall())
+    # # reading ignored variables from db
+    # ignored_variables = set(v[0] for v in mssql_engine.execute('''select variable
+    #     from open_variables where type = ?''', 'ignored').fetchall())
 
     # reading all text variables from mdd and builds flat list (VDATA) of variables
     flat_variables = []
     mdd = client.Dispatch('MDM.Document')
     mdd.Open(MDD_PATH,mode=openConstants.oREAD)
     for v in mdd.Variables:
-        if v.DataType == DataTypeConstants.mtText and not v.IsSystemVariable \
-        and v.HasCaseData and v.FullName not in ignored_variables:
+        # if v.DataType == DataTypeConstants.mtText and not v.IsSystemVariable \
+        # and v.HasCaseData and v.FullName not in ignored_variables:
+        if v.DataType == DataTypeConstants.mtText and v.HasCaseData:
             flat_variables.append(v.FullName)
     mdd.Close()
 

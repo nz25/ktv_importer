@@ -66,6 +66,15 @@ def clean_data():
     _, rows_affected = ddf.Execute('delete from vdata where cdouble(intend-intstart)*60*24 <= 5')
     print(f'{rows_affected} removed')
  
+    print('Counting interviews...', end=' ')
+    rs, _ = ddf.Execute('select count(*) as c from hdata')
+    if rs.EOF:
+        raise Exception('Empty dataset after cleaning. Exiting...')
+    else:
+        row_count = rs.Fields['c'].Value
+        rs.Close()
+        print(f'{row_count} remaining')
+    
     ddf.Close()
 
 def get_frequences(var):

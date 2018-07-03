@@ -1,7 +1,13 @@
 from datetime import date
 
 # files paths
-WAVE = date.today().strftime('%y%m')
+
+# dynamic discovery (below) of the wave did not work on 2.7 as Juli wave has not started yet
+# it can be activated again as soon automatic execution process will ensure that the final
+# data for the previous wave has been loaded
+# WAVE = date.today().strftime('%y%m')
+
+WAVE = '1806'
 RAW_DATA_LOCATION = f'D:\\ktv\\KTVONLINE_{WAVE}'
 RAW_MDD_PATH = f'{RAW_DATA_LOCATION}.mdd'
 RAW_DDF_PATH = f'{RAW_DATA_LOCATION}.ddf'

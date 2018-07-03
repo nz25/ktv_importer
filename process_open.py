@@ -11,10 +11,11 @@ from string import punctuation
 import pickle
 import pandas as pd
 import re
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from sqlalchemy import create_engine
 import Levenshtein as lv
 from CharVectorizer import CharVectorizer
+import itertools
 
 mssql_engine = create_engine(MSSQL_CONNECTION)
 mssql_conn = mssql_engine.connect().connection
@@ -77,7 +78,7 @@ def lookup(func, func_name, library):
         ''').fetchall():
         clean_answer = func(answer).strip()
         if clean_answer in library:
-            record = f'''({serial}, '{variable}', {position}, '{answer}', '{func_name}', {library[clean_answer]}, 1, '{clean_answer}')'''
+            record = f'''({serial}, '{variable}', {position}, '{answer.replace("'", r"''")}', '{func_name}', {library[clean_answer]}, 1, '{clean_answer}')'''
             records.append(record)
     write_records(records, 'open_coded')
     print(f'{len(records)} records')
@@ -98,7 +99,7 @@ def lev():
             if score > LEVENSHTEIN_CUTOFF and score > max_score:
                 max_score, code, candidate = score, c, v
         if max_score > LEVENSHTEIN_CUTOFF:
-            record = f'''({serial}, '{variable}', {position}, '{answer}', 'lev', {code}, {max_score}, '{candidate}')'''
+            record = f'''({serial}, '{variable}', {position}, '{answer.replace("'", r"''")}', 'lev', {code}, {max_score}, '{candidate}')'''
             records.append(record)
 
     write_records(records, 'open_coded')
@@ -116,10 +117,10 @@ def svss():
         ''').fetchall():
         clean_answer = clean_verbatim(answer)
         if clean_answer in delete:
-            record = f'''({serial}, '{variable}', {position}, '{answer}', 'svss', 0, 1, '{clean_answer}')'''
+            record = f'''({serial}, '{variable}', {position}, '{answer.replace("'", r"''")}', 'svss', 0, 1, '{clean_answer}')'''
             records.append(record)
         if len(clean_answer) < 2:
-            record = f'''({serial}, '{variable}', {position}, '{answer}', 'svss_len', 0, 1, '')'''
+            record = f'''({serial}, '{variable}', {position}, '{answer.replace("'", r"''")}', 'svss_len', 0, 1, '')'''
             records.append(record)
 
     write_records(records, 'open_coded')
@@ -143,7 +144,7 @@ def bigramms():
                 count += freq
                 found_bi.append(bi)
         if count >= 3:
-            record = f'''({serial}, '{variable}', {position}, '{answer}', 'bigramms', 0, 1, '{','.join(found_bi)}')'''
+            record = f'''({serial}, '{variable}', {position}, '{answer.replace("'", r"''")}', 'bigramms', 0, 1, '{','.join(found_bi)}')'''
             records.append(record)            
 
     write_records(records, 'open_coded')
@@ -173,7 +174,7 @@ def repeats():
                     continue
                 break
         if is_found:
-            record = f'''({serial}, '{variable}', {position}, '{answer}', 'repeats', 0, 1, '{found_pattern}')'''
+            record = f'''({serial}, '{variable}', {position}, '{answer.replace("'", r"''")}', 'repeats', 0, 1, '{found_pattern}')'''
             records.append(record) 
 
     write_records(records, 'open_coded')
@@ -194,7 +195,7 @@ def numbers():
 
         if found:            
             candidate = ','.join(found)
-            record = f'''({serial}, '{variable}', {position}, '{answer}', 'num', 0, 1, '{candidate}')'''
+            record = f'''({serial}, '{variable}', {position}, '{answer.replace("'", r"''")}', 'num', 0, 1, '{candidate}')'''
             records.append(record) 
 
     write_records(records, 'open_coded')
@@ -223,7 +224,7 @@ def ml_neuronet():
         max_prob = probability.max(axis = 1)[0]
         if max_prob >= NEURONET_CUTOFF:            
             prediction = mlp_nn.predict(X)[0]
-            record = f'''({serial}, '{variable}', {position}, '{answer}', 'ml', {prediction}, {max_prob}, '')'''
+            record = f'''({serial}, '{variable}', {position}, '{answer.replace("'", r"''")}', 'ml', {prediction}, {max_prob}, '')'''
             records.append(record)
         
     write_records(records, 'open_coded')
