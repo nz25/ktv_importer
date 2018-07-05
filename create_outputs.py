@@ -1,5 +1,6 @@
 # create_outputs.py
 
+import settings
 from settings import MSSQL_CONNECTION, DAU_LOCATION
 from sqlalchemy import create_engine
 
@@ -13,6 +14,7 @@ def write_dau():
         for serial, variable, answer in mssql_engine.execute(f'''
             select serial, variable, answer
             from open_uncoded
+            where {settings.SERIAL_CRITERIA}
             order by serial, variable, answer
             ''').fetchall():
             answer = clean_answer(answer)
@@ -37,4 +39,6 @@ def main():
     print('Output creation complete', end='\n\n')
 
 if __name__ == '__main__':
+    import initialize
+    initialize.main()
     main()

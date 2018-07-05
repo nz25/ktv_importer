@@ -7,8 +7,8 @@ from datetime import date
 # data for the previous wave has been loaded
 # WAVE = date.today().strftime('%y%m')
 
-WAVE = '1806'
-RAW_DATA_LOCATION = f'D:\\ktv\\KTVONLINE_{WAVE}'
+WAVE = '1807'
+RAW_DATA_LOCATION = f'\\\\avanufil002\\IAV_internal\\Dashboard BVR\\KTV_2015\\LiveDaten\\KTVONLINE_{WAVE}'
 RAW_MDD_PATH = f'{RAW_DATA_LOCATION}.mdd'
 RAW_DDF_PATH = f'{RAW_DATA_LOCATION}.ddf'
 PROCESSED_DATA_LOCATION = f'{RAW_DATA_LOCATION}_IMPORT'
@@ -27,7 +27,7 @@ INITIAL_WEIGHT_TARGETS = {
 }
 
 # database connection strings
-MSSQL_CONNECTION = 'mssql+pyodbc://./dw_04_live?driver=SQL+Server+Native+Client+11.0?trusted_connection=yes'
+MSSQL_CONNECTION = 'mssql+pyodbc://avanusql702/dw_04_live?driver=SQL+Server+Native+Client+11.0?trusted_connection=yes'
 SQLITE_CONNECTION = f'{PROCESSED_DATA_LOCATION}.ddf'
 MROLEDB_CONNECTION = f'''
     Provider=mrOleDB.Provider.2;
@@ -50,4 +50,4 @@ NEURONET_PATH = 'neuronet_2018-06-21.pkl'
 NEURONET_CUTOFF = 0.97
 
 # outputs
-DAU_LOCATION = f'{PROCESSED_DATA_LOCATION}.dau'
+DAU_LOCATION = f'\\\\avanufil002\\ActiveProjects\\KTV\\06_Coding\\02_Coding Files\\DAUs\\ktv_{WAVE}.dau'

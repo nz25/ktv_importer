@@ -7,11 +7,11 @@ from settings import MSSQL_CONNECTION, LEVENSHTEIN_CUTOFF, \
     BIGRAMMS, REGEX_CRITERIA, NEURONET_PATH, NEURONET_CUTOFF
 from load_data import write_records, chunker
 
-from string import punctuation
+from string import punctuation, whitespace
 import pickle
 import pandas as pd
 import re
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict, defaultdict, deque
 from sqlalchemy import create_engine
 import Levenshtein as lv
 from CharVectorizer import CharVectorizer
@@ -154,6 +154,7 @@ def bigramms():
 def repeats():
 
     print(f'Coding using repeats...', end=' ')
+
     records = []
     for serial, variable, position, answer in mssql_engine.execute(f'''
         select serial, variable, position, answer
@@ -166,7 +167,8 @@ def repeats():
             parsed = [clean_answer[i:i+chunk] for i in range(0, len(clean_answer), chunk)]
             if len(parsed) > 2:
                 for i in range(len(parsed) - 2):
-                    if parsed[i] == parsed[i+1] == parsed[i+2]:
+                    if parsed[i] == parsed[i+1] == parsed[i+2] \
+                    and parsed[i] not in '   ' and parsed[i] not in '...':
                         is_found = True
                         found_pattern = parsed[i]
                         break
@@ -175,7 +177,7 @@ def repeats():
                 break
         if is_found:
             record = f'''({serial}, '{variable}', {position}, '{answer.replace("'", r"''")}', 'repeats', 0, 1, '{found_pattern}')'''
-            records.append(record) 
+            records.append(record)
 
     write_records(records, 'open_coded')
     print(f'{len(records)} records')
@@ -232,6 +234,7 @@ def ml_neuronet():
 
 
 def main():
+
     print('PROCESSING OPEN')
     load_library()
     empty_open_tables()
@@ -243,8 +246,8 @@ def main():
     bigramms()
     repeats()
     numbers()
-    #ml_neuronet()
     print('Processing opens complete', end='\n\n')
+
 
 if __name__ == '__main__':
     
