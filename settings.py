@@ -11,9 +11,16 @@ WAVE = '1807'
 RAW_DATA_LOCATION = f'\\\\avanufil002\\IAV_internal\\Dashboard BVR\\KTV_2015\\LiveDaten\\KTVONLINE_{WAVE}'
 RAW_MDD_PATH = f'{RAW_DATA_LOCATION}.mdd'
 RAW_DDF_PATH = f'{RAW_DATA_LOCATION}.ddf'
+
+DP_DATA_LOCATION = f'\\\\avanufil002\\ActiveProjects\\KTV\\07_Data\\01_Data Processing\\TOM\\Online\\20{WAVE[:2]}-{WAVE[2:]}\\MDD\\KTVONLINE_{WAVE}'
+DP_MDD_PATH = f'{DP_DATA_LOCATION}.mdd'
+DP_DDF_PATH = f'{DP_DATA_LOCATION}.ddf'
+
 PROCESSED_DATA_LOCATION = f'{RAW_DATA_LOCATION}_IMPORT'
 MDD_PATH = f'{PROCESSED_DATA_LOCATION}.mdd'
 DDF_PATH = f'{PROCESSED_DATA_LOCATION}.ddf'
+
+DP_LOCATION = f'\\\\avanufil002\\ActiveProjects\\KTV\\07_Data\\01_Data Processing\\TOM\\Online\\20{WAVE[:2]}-{WAVE[2:]}\\MDD\\KTVONLINE_{WAVE}'
 
 # weight targets
 INITIAL_WEIGHT_TARGETS = {

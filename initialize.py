@@ -2,8 +2,8 @@
 # prepare_data.py
 
 import settings
-from settings import RAW_MDD_PATH, RAW_DDF_PATH, \
-    MDD_PATH, DDF_PATH, MSSQL_CONNECTION, WAVE
+from settings import RAW_MDD_PATH, RAW_DDF_PATH, DP_MDD_PATH, \
+    DP_DDF_PATH, MDD_PATH, DDF_PATH, MSSQL_CONNECTION, WAVE
 
 from shutil import copyfile
 from os import path
@@ -17,6 +17,9 @@ def backup():
 
     copyfile(RAW_MDD_PATH, MDD_PATH)
     copyfile(RAW_DDF_PATH, DDF_PATH)
+
+    copyfile(RAW_MDD_PATH, DP_MDD_PATH)
+    copyfile(RAW_DDF_PATH, DP_DDF_PATH)
 
     mdd = client.Dispatch('MDM.Document')
     mdd.Open(MDD_PATH)
