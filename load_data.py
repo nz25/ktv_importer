@@ -190,17 +190,11 @@ def read_import_open():
             parent_tables.append(parent_table)
     levels = {k: [v[0], v[1][:-1]] for k, v in levels.items()}
 
-    # # reading ignored variables from db
-    # ignored_variables = set(v[0] for v in mssql_engine.execute('''select variable
-    #     from open_variables where type = ?''', 'ignored').fetchall())
-
     # reading all text variables from mdd and builds flat list (VDATA) of variables
     flat_variables = []
     mdd = client.Dispatch('MDM.Document')
     mdd.Open(MDD_PATH,mode=openConstants.oREAD)
     for v in mdd.Variables:
-        # if v.DataType == DataTypeConstants.mtText and not v.IsSystemVariable \
-        # and v.HasCaseData and v.FullName not in ignored_variables:
         if v.DataType == DataTypeConstants.mtText and v.HasCaseData:
             flat_variables.append(v.FullName)
     mdd.Close()
@@ -244,6 +238,9 @@ def read_import_open():
                 from {t}''').fetchall()}
             relevant_tables[t] = values_dict
 
+    serials_dict = {p0 : serial for p0, serial in sqlite_cursor.execute('''
+        select [:P0], [Respondent.Serial:L] from L1''').fetchall()}
+
     # builds sql queries per table
     records = []
     for t in tables:
@@ -260,7 +257,7 @@ def read_import_open():
         
         #builds and executes sql
         for row in sqlite_cursor.execute(f'''select {','.join(query_columns)} from {t}'''):
-            serial = row[0] + settings.SERIAL_INCREMENT * 1_000_000
+            serial = serials_dict[row[0]] + settings.SERIAL_INCREMENT * 1_000_000
             variable_prefix = ''
             for i in range(1, len(level_tables)):
                 field = levels[level_tables[i]][0]
@@ -273,7 +270,7 @@ def read_import_open():
                 answer = row[offset]
                 if answer:
                     answer = answer.replace("'", "''")
-                    record = '(' + str(serial) + ", '" + variable + "', '" + answer + "')"
+                    record = f'(' + str(serial) + ", '" + variable + "', '" + answer + "')"
                     records.append(record)
        
     write_records(records, 'import_open')
@@ -295,6 +292,7 @@ def write_records(records, table_name):
 
 def main():
     print('DATA LOADING')
+    
     empty_import_tables()
     read_import_interviews()
     read_import_funnel()

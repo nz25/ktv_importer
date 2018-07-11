@@ -32,8 +32,8 @@ def read_increment():
         'select increment from waves where wave_id = ?', WAVE
         ).fetchone()
     settings.SERIAL_INCREMENT = result['increment']
-    settings.SERIAL_CRITERIA = f'''serial between {str(settings.SERIAL_INCREMENT * 1_000_000)}
-            and {str((settings.SERIAL_INCREMENT + 1) * 1_000_000 - 1)}'''
+    settings.SERIAL_CRITERIA = f'''serial between {settings.SERIAL_INCREMENT * 1_000_000}
+            and {(settings.SERIAL_INCREMENT + 1) * 1_000_000 - 1}'''
     print('OK')
     
 def read_category_map():
