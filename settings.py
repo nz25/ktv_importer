@@ -7,12 +7,12 @@ from datetime import date
 # data for the previous wave has been loaded
 # WAVE = date.today().strftime('%y%m')
 
-WAVE = '1807'
+WAVE = '1808'
 RAW_DATA_LOCATION = f'\\\\avanufil002\\IAV_internal\\Dashboard BVR\\KTV_2015\\LiveDaten\\KTVONLINE_{WAVE}'
 RAW_MDD_PATH = f'{RAW_DATA_LOCATION}.mdd'
 RAW_DDF_PATH = f'{RAW_DATA_LOCATION}.ddf'
 
-DP_DATA_LOCATION = f'\\\\avanufil002\\ActiveProjects\\KTV\\07_Data\\01_Data Processing\\TOM\\Online\\20{WAVE[:2]}-{WAVE[2:]}\\MDD\\KTVONLINE_{WAVE}'
+DP_DATA_LOCATION = f'\\\\avanufil002\\ActiveProjects\\KTV\\07_Data\\01_Data Processing\\TOM\\Online\\20{WAVE[:2]}-{WAVE[2:]}\\MDD\\Live-Daten\\KTVONLINE_{WAVE}'
 DP_MDD_PATH = f'{DP_DATA_LOCATION}.mdd'
 DP_DDF_PATH = f'{DP_DATA_LOCATION}.ddf'
 
@@ -34,7 +34,7 @@ INITIAL_WEIGHT_TARGETS = {
 }
 
 # database connection strings
-MSSQL_CONNECTION = 'mssql+pyodbc://avanusql702/dw_04_live?driver=SQL+Server+Native+Client+11.0?trusted_connection=yes'
+MSSQL_CONNECTION = 'mssql+pyodbc://ZorenkoD_CS:Wuerfel1234@avanusql702/dw_04_live?driver=SQL+Server+Native+Client+11.0'
 SQLITE_CONNECTION = f'{PROCESSED_DATA_LOCATION}.ddf'
 MROLEDB_CONNECTION = f'''
     Provider=mrOleDB.Provider.2;
@@ -58,3 +58,4 @@ NEURONET_CUTOFF = 0.97
 
 # outputs
 DAU_LOCATION = f'\\\\avanufil002\\ActiveProjects\\KTV\\06_Coding\\02_Coding Files\\DAUs\\ktv_{WAVE}.dau'
+CFILE_LOCATION = f'\\\\avanufil002\\ActiveProjects\\KTV\\06_Coding\\02_Coding Files\\DAUs\\dw_ktv_cfile_20{WAVE[:2]}-{WAVE[2:]}.txt'

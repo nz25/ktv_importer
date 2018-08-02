@@ -11,15 +11,17 @@ from sqlalchemy import create_engine
 from win32com import client
 from xml.etree import cElementTree
 
-
 def backup():
     print('Backing up...', end=' ')
 
     copyfile(RAW_MDD_PATH, MDD_PATH)
     copyfile(RAW_DDF_PATH, DDF_PATH)
 
-    copyfile(RAW_MDD_PATH, DP_MDD_PATH)
-    copyfile(RAW_DDF_PATH, DP_DDF_PATH)
+    try:
+        copyfile(RAW_MDD_PATH, DP_MDD_PATH)
+        copyfile(RAW_DDF_PATH, DP_DDF_PATH)
+    except FileNotFoundError:
+        print(f'DP folder {WAVE} not found')
 
     mdd = client.Dispatch('MDM.Document')
     mdd.Open(MDD_PATH)
