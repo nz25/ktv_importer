@@ -5,7 +5,10 @@ from settings import MSSQL_CONNECTION, DAU_LOCATION, CFILE_LOCATION
 from sqlalchemy import create_engine
 from collections import defaultdict
 
+# ms sql - destination db
 mssql_engine = create_engine(MSSQL_CONNECTION)
+mssql_conn = mssql_engine.connect().connection
+mssql_cursor = mssql_conn.cursor()
 
 def write_dau():
     print('Writing dau file...', end=' ')
@@ -59,7 +62,7 @@ def write_cfile():
                 #remove duplicates from codes
                 codes = list(dict.fromkeys(codes))
                 variables_sql.append(f'{variable}.Coding={{{",".join(codes)}}}')
-            sql = f'update vdata set {",".join(variables_sql)} where respondent.serial = {serial}\n'
+            sql = f'UPDATE VDATA SET {", ".join(variables_sql)} WHERE respondent.serial={serial}\n'
             f.write(sql)
 
         # for serial, data in serials.items():
@@ -74,10 +77,17 @@ def write_cfile():
 
     print('OK')
 
+def refresh_dashboard():
+    print('Refreshing dashboard...', end=' ')
+    mssql_cursor.execute(f'exec dbo.refresh_dashboard')
+    mssql_conn.commit()
+    print('OK')
+
 def main():
     print('OUTPUTS CREATION')
     write_dau()
     write_cfile()
+    refresh_dashboard()
     print('Output creation complete', end='\n\n')
 
 if __name__ == '__main__':

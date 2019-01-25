@@ -34,9 +34,19 @@ def empty_import_tables():
 def read_import_interviews():
     print('Reading interviews...', end=' ')
 
+    # update 19.10.2018 - client HUK
+    f9l_table_name = result = sqlite_cursor.execute('''
+        select TableName
+        from Levels
+        where DSCTableName = 'f9l'
+        ''').fetchone()[0]
+    inverted_category_map = {v: k for k, v in settings.CATEGORY_MAP.items()}
+    hukc_value = inverted_category_map['hukc']
+    # end update 
+    
     records = []
 
-    result = sqlite_cursor.execute('''
+    result = sqlite_cursor.execute(f'''
         select
             [Respondent.Serial:L] as serial,
             [fbgrot:C1] as fbgrot,
@@ -51,8 +61,12 @@ def read_import_interviews():
             [fhb:C1] as fhb,
             [f12a:C1] as f12a,
             [f12b:C1] as f12b,
+            [f9:C1] as f9_huk,
             [weight:D] as weight
         from L1
+            left join {f9l_table_name}
+                on L1.[:P0] = {f9l_table_name}.[:P1]
+                and {f9l_table_name}.[LevelId:C1] = {hukc_value}
         ''')
     for row in result:
         serial = row[0] + settings.SERIAL_INCREMENT * 1_000_000
@@ -70,11 +84,12 @@ def read_import_interviews():
         fhb = settings.CATEGORY_MAP.get(row[10], 'na')
         f12a = settings.CATEGORY_MAP[row[11]]
         f12b = settings.CATEGORY_MAP.get(row[12], 'na')
-        weight = row[13]
+        f9_huk = settings.CATEGORY_MAP.get(row[13], 'na')
+        weight = row[14]
 
         record = str((serial, fbgrot, start_time, age,
             fa, fb, fc, ff, fg, fha, fhb,
-            f12a, f12b, weight))
+            f12a, f12b, f9_huk, weight))
         records.append(record)
 
     write_records(records, 'import_interviews')
@@ -287,6 +302,7 @@ def write_records(records, table_name):
     for batch in chunker(records, 1000):
         insert_values = ','.join(batch)
         insert_statement = insert_header + insert_values
+        print(insert_statement)
         mssql_cursor.execute(insert_statement)
         mssql_conn.commit()
 

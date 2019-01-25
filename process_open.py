@@ -62,6 +62,7 @@ def tokenize_answers():
         tokenized_answers = answer.split('\n')
         for index, tokenized_answer in enumerate(tokenized_answers):
             if tokenized_answer:
+                tokenized_answer = tokenized_answer.replace("'", "''")
                 record = f'''({serial}, '{variable}', {index}, char(10), '{tokenized_answer}')'''
                 records.append(record)
     write_records(records, 'open_tokenized')
