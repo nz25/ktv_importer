@@ -302,7 +302,6 @@ def write_records(records, table_name):
     for batch in chunker(records, 1000):
         insert_values = ','.join(batch)
         insert_statement = insert_header + insert_values
-        print(insert_statement)
         mssql_cursor.execute(insert_statement)
         mssql_conn.commit()
 

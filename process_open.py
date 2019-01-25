@@ -1,4 +1,4 @@
-# process_open.py
+﻿# process_open.py
 
 # pylint: disable-msg=e1101
 
@@ -77,7 +77,7 @@ def lookup(func, func_name, library):
         from open_brands_uncoded
         where {settings.SERIAL_CRITERIA}
         ''').fetchall():
-        clean_answer = func(answer).strip()
+        clean_answer = func(answer).strip().replace("'", r"''")
         if clean_answer in library:
             record = f'''({serial}, '{variable}', {position}, '{answer.replace("'", r"''")}', '{func_name}', {library[clean_answer]}, 1, '{clean_answer}')'''
             records.append(record)
