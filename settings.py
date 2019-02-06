@@ -7,7 +7,7 @@
 # data for the previous wave has been loaded
 # WAVE = date.today().strftime('%y%m')
 
-WAVE = '1901'
+WAVE = '1902'
 RAW_DATA_LOCATION = f'\\\\avanufil002\\IAV_internal\\Dashboard BVR\\KTV_2015\\LiveDaten\\KTVONLINE_{WAVE}'
 RAW_MDD_PATH = f'{RAW_DATA_LOCATION}.mdd'
 RAW_DDF_PATH = f'{RAW_DATA_LOCATION}.ddf'
