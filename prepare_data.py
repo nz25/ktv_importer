@@ -4,7 +4,7 @@
 
 import settings
 from settings import INITIAL_WEIGHT_TARGETS, MSSQL_CONNECTION, \
-    MROLEDB_CONNECTION, MDD_PATH, DDF_PATH
+    MROLEDB_CONNECTION, MDD_PATH, DDF_PATH, START_DATE, END_DATE
 from enums import *
 from math import isclose
 from win32com import client
@@ -65,7 +65,15 @@ def clean_data():
     print('Cleaning speedsters...', end=' ')
     _, rows_affected = ddf.Execute('delete from vdata where cdouble(intend-intstart)*60*24 <= 5')
     print(f'{rows_affected} removed')
- 
+        
+    print('Cleaning other wave...', end=' ')
+    date_format = '%d.%m.%Y %H:%M:%S'
+    _, rows_affected = ddf.Execute(f"""delete
+        from vdata
+        where not (intend > '{START_DATE.strftime(date_format)}'
+            and intend < '{END_DATE.strftime(date_format)}')""")
+    print(f'{rows_affected} removed')
+
     print('Counting interviews...', end=' ')
     rs, _ = ddf.Execute('select count(*) as c from hdata')
     if rs.EOF:

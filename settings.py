@@ -1,18 +1,23 @@
-﻿from datetime import date
-
-# files paths
+﻿from datetime import date, datetime
 
 # dynamic discovery (below) of the wave did not work on 2.7 as Juli wave has not started yet
 # it can be activated again as soon automatic execution process will ensure that the final
 # data for the previous wave has been loaded
 # WAVE = date.today().strftime('%y%m')
 
-WAVE = '1902'
+WAVE = 1904
+MONTH = WAVE % 100
+YEAR = 2000 + WAVE // 100
+START_DATE = datetime(YEAR, MONTH, 1)
+END_DATE = datetime(YEAR, MONTH + 1, 1) if MONTH < 12 else datetime(YEAR + 1, 1, 1)
+
+# files paths
+
 RAW_DATA_LOCATION = f'\\\\avanufil002\\IAV_internal\\Dashboard BVR\\KTV_2015\\LiveDaten\\KTVONLINE_{WAVE}'
 RAW_MDD_PATH = f'{RAW_DATA_LOCATION}.mdd'
 RAW_DDF_PATH = f'{RAW_DATA_LOCATION}.ddf'
 
-DP_DATA_LOCATION = f'\\\\avanufil002\\ActiveProjects\\KTV\\07_Data\\01_Data Processing\\TOM\\Online\\20{WAVE[:2]}-{WAVE[2:]}\\Data\\Live-Data\\KTVONLINE_{WAVE}'
+DP_DATA_LOCATION = f'\\\\avanufil002\\ActiveProjects\\KTV\\07_Data\\01_Data Processing\\TOM\\Online\\{YEAR}-{MONTH}\\Data\\Live-Data\\KTVONLINE_{WAVE}'
 DP_MDD_PATH = f'{DP_DATA_LOCATION}.mdd'
 DP_DDF_PATH = f'{DP_DATA_LOCATION}.ddf'
 
@@ -20,7 +25,7 @@ PROCESSED_DATA_LOCATION = f'{RAW_DATA_LOCATION}_IMPORT'
 MDD_PATH = f'{PROCESSED_DATA_LOCATION}.mdd'
 DDF_PATH = f'{PROCESSED_DATA_LOCATION}.ddf'
 
-DP_LOCATION = f'\\\\avanufil002\\ActiveProjects\\KTV\\07_Data\\01_Data Processing\\TOM\\Online\\20{WAVE[:2]}-{WAVE[2:]}\\Data\\Live-Data\\KTVONLINE_{WAVE}'
+DP_LOCATION = f'\\\\avanufil002\\ActiveProjects\\KTV\\07_Data\\01_Data Processing\\TOM\\Online\\{YEAR}-{MONTH}\\Data\\Live-Data\\KTVONLINE_{WAVE}'
 
 # weight targets
 INITIAL_WEIGHT_TARGETS = {
@@ -58,4 +63,4 @@ NEURONET_CUTOFF = 0.97
 
 # outputs
 DAU_LOCATION = f'\\\\avanufil002\\ActiveProjects\\KTV\\06_Coding\\02_Coding Files\\DAUs\\ktv_{WAVE}.dau'
-CFILE_LOCATION = f'\\\\avanufil002\\ActiveProjects\\KTV\\06_Coding\\02_Coding Files\\DAUs\\dw_ktv_cfile_20{WAVE[:2]}-{WAVE[2:]}.txt'
+CFILE_LOCATION = f'\\\\avanufil002\\ActiveProjects\\KTV\\06_Coding\\02_Coding Files\\DAUs\\dw_ktv_cfile_{YEAR}-{MONTH}.txt'
